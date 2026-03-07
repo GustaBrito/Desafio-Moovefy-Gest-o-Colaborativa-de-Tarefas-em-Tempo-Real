@@ -1,5 +1,6 @@
 using GerenciadorTarefas.Dominio.Contratos;
 using GerenciadorTarefas.Dominio.Entidades;
+using GerenciadorTarefas.Dominio.Modelos.Tarefas;
 using GerenciadorTarefas.Infraestrutura.Persistencia;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,10 +15,40 @@ public sealed class RepositorioTarefa : IRepositorioTarefa
         this.contextoBancoDados = contextoBancoDados;
     }
 
-    public async Task<IReadOnlyCollection<Tarefa>> ListarAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<Tarefa>> ListarAsync(
+        FiltroConsultaTarefas filtroConsulta,
+        CancellationToken cancellationToken = default)
     {
-        return await contextoBancoDados.Tarefas
+        var consulta = contextoBancoDados.Tarefas
             .AsNoTracking()
+            .AsQueryable();
+
+        if (filtroConsulta.ProjetoId.HasValue)
+        {
+            consulta = consulta.Where(tarefa => tarefa.ProjetoId == filtroConsulta.ProjetoId.Value);
+        }
+
+        if (filtroConsulta.Status.HasValue)
+        {
+            consulta = consulta.Where(tarefa => tarefa.Status == filtroConsulta.Status.Value);
+        }
+
+        if (filtroConsulta.ResponsavelId.HasValue)
+        {
+            consulta = consulta.Where(tarefa => tarefa.ResponsavelId == filtroConsulta.ResponsavelId.Value);
+        }
+
+        if (filtroConsulta.DataPrazoInicial.HasValue)
+        {
+            consulta = consulta.Where(tarefa => tarefa.DataPrazo >= filtroConsulta.DataPrazoInicial.Value);
+        }
+
+        if (filtroConsulta.DataPrazoFinal.HasValue)
+        {
+            consulta = consulta.Where(tarefa => tarefa.DataPrazo <= filtroConsulta.DataPrazoFinal.Value);
+        }
+
+        return await consulta
             .OrderByDescending(tarefa => tarefa.DataCriacao)
             .ToListAsync(cancellationToken);
     }

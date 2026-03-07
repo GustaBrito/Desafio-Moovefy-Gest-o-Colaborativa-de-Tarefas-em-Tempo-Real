@@ -2,6 +2,7 @@ using GerenciadorTarefas.Aplicacao.Contratos.Tarefas;
 using GerenciadorTarefas.Aplicacao.Modelos.Tarefas;
 using GerenciadorTarefas.Dominio.Contratos;
 using GerenciadorTarefas.Dominio.Entidades;
+using GerenciadorTarefas.Dominio.Modelos.Tarefas;
 
 namespace GerenciadorTarefas.Aplicacao.CasosDeUso.Tarefas;
 
@@ -14,9 +15,12 @@ public sealed class ConsultaTarefasCasoDeUso : IConsultaTarefasCasoDeUso
         this.repositorioTarefa = repositorioTarefa;
     }
 
-    public async Task<IReadOnlyCollection<TarefaResposta>> ListarAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<TarefaResposta>> ListarAsync(
+        FiltroConsultaTarefasEntrada? filtro = null,
+        CancellationToken cancellationToken = default)
     {
-        var tarefas = await repositorioTarefa.ListarAsync(cancellationToken);
+        var filtroNormalizado = CriarFiltroConsulta(filtro);
+        var tarefas = await repositorioTarefa.ListarAsync(filtroNormalizado, cancellationToken);
         var dataReferencia = DateTime.UtcNow;
 
         return tarefas
@@ -38,6 +42,43 @@ public sealed class ConsultaTarefasCasoDeUso : IConsultaTarefasCasoDeUso
         }
 
         return MapearParaResposta(tarefa, DateTime.UtcNow);
+    }
+
+    private static FiltroConsultaTarefas CriarFiltroConsulta(FiltroConsultaTarefasEntrada? filtro)
+    {
+        if (filtro is null)
+        {
+            return new FiltroConsultaTarefas();
+        }
+
+        if (filtro.ProjetoId.HasValue && filtro.ProjetoId.Value == Guid.Empty)
+        {
+            throw new ArgumentException("Quando informado, o identificador do projeto deve ser valido.", nameof(filtro));
+        }
+
+        if (filtro.ResponsavelId.HasValue && filtro.ResponsavelId.Value == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Quando informado, o identificador do responsavel deve ser valido.",
+                nameof(filtro));
+        }
+
+        if (filtro.DataPrazoInicial.HasValue && filtro.DataPrazoFinal.HasValue
+            && filtro.DataPrazoInicial.Value > filtro.DataPrazoFinal.Value)
+        {
+            throw new ArgumentException(
+                "A data de prazo inicial nao pode ser maior que a data de prazo final.",
+                nameof(filtro));
+        }
+
+        return new FiltroConsultaTarefas
+        {
+            ProjetoId = filtro.ProjetoId,
+            Status = filtro.Status,
+            ResponsavelId = filtro.ResponsavelId,
+            DataPrazoInicial = filtro.DataPrazoInicial,
+            DataPrazoFinal = filtro.DataPrazoFinal
+        };
     }
 
     private static TarefaResposta MapearParaResposta(Tarefa tarefa, DateTime dataReferencia)
