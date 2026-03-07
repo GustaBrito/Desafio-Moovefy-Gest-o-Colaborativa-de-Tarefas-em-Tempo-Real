@@ -1,3 +1,5 @@
+using GerenciadorTarefas.Aplicacao.CasosDeUso.Projetos;
+using GerenciadorTarefas.Aplicacao.Contratos.Projetos;
 using GerenciadorTarefas.Dominio.Contratos;
 using GerenciadorTarefas.Infraestrutura.Persistencia;
 using GerenciadorTarefas.Infraestrutura.Repositorios;
@@ -19,6 +21,7 @@ public static class ConfiguracaoInjecaoDependencia
 
         servicos.AddScoped<IRepositorioProjeto, RepositorioProjeto>();
         servicos.AddScoped<IRepositorioTarefa, RepositorioTarefa>();
+        servicos.AddScoped<IConsultaProjetosCasoDeUso, ConsultaProjetosCasoDeUso>();
 
         return servicos;
     }
