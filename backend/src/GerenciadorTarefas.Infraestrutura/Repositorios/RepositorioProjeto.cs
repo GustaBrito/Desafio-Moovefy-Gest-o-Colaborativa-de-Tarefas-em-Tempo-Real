@@ -34,6 +34,11 @@ public sealed class RepositorioProjeto : IRepositorioProjeto
         await contextoBancoDados.Projetos.AddAsync(projeto, cancellationToken);
     }
 
+    public async Task SalvarAlteracoesAsync(CancellationToken cancellationToken = default)
+    {
+        await contextoBancoDados.SaveChangesAsync(cancellationToken);
+    }
+
     public void Atualizar(Projeto projeto)
     {
         contextoBancoDados.Projetos.Update(projeto);
