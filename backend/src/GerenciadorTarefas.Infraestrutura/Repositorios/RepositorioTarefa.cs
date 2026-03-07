@@ -41,6 +41,11 @@ public sealed class RepositorioTarefa : IRepositorioTarefa
         await contextoBancoDados.Tarefas.AddAsync(tarefa, cancellationToken);
     }
 
+    public async Task SalvarAlteracoesAsync(CancellationToken cancellationToken = default)
+    {
+        await contextoBancoDados.SaveChangesAsync(cancellationToken);
+    }
+
     public void Atualizar(Tarefa tarefa)
     {
         contextoBancoDados.Tarefas.Update(tarefa);
