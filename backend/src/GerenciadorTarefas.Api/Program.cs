@@ -1,17 +1,11 @@
-using GerenciadorTarefas.Infraestrutura.Persistencia;
-using Microsoft.EntityFrameworkCore;
+using GerenciadorTarefas.Api.Configuracoes;
 
 var construtorAplicacao = WebApplication.CreateBuilder(args);
 
 construtorAplicacao.Logging.ClearProviders();
 construtorAplicacao.Logging.AddConsole();
 
-var stringConexao = construtorAplicacao.Configuration.GetConnectionString("BancoDados")
-    ?? throw new InvalidOperationException("A string de conexão 'BancoDados' não foi configurada.");
-
-construtorAplicacao.Services.AddDbContext<ContextoBancoDados>(opcoes =>
-    opcoes.UseNpgsql(stringConexao));
-
+construtorAplicacao.Services.AdicionarInjecaoDependencia(construtorAplicacao.Configuration);
 construtorAplicacao.Services.AddControllers();
 
 var aplicacao = construtorAplicacao.Build();
