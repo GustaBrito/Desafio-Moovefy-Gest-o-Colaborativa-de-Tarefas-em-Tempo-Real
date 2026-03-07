@@ -7,6 +7,7 @@ construtorAplicacao.AdicionarObservabilidade();
 construtorAplicacao.Services.AdicionarInjecaoDependencia(construtorAplicacao.Configuration);
 construtorAplicacao.Services.AdicionarDocumentacaoApi();
 construtorAplicacao.Services.AdicionarTratamentoExcecaoGlobal();
+construtorAplicacao.Services.AdicionarPadraoRespostaApi();
 construtorAplicacao.Services.AdicionarValidacaoEntrada();
 construtorAplicacao.Services.AddControllers();
 

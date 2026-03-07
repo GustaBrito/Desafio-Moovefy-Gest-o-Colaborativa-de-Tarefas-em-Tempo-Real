@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+using GerenciadorTarefas.Api.Contratos.Respostas;
 
 namespace GerenciadorTarefas.Api.Intermediarios;
 
@@ -34,50 +34,55 @@ public sealed class MiddlewareTratamentoExcecaoGlobal
     {
         logger.LogError(excecao, "Erro nao tratado durante o processamento da requisicao.");
 
-        var (status, titulo, detalhePadrao) = MapearExcecao(excecao);
+        var (status, codigo, mensagemPadrao, detalhePadrao) = MapearExcecao(excecao);
 
-        var problema = new ProblemDetails
+        var respostaErro = new RespostaErroApi
         {
             Status = status,
-            Title = titulo,
-            Detail = ambiente.IsDevelopment() ? excecao.Message : detalhePadrao,
-            Instance = contexto.Request.Path
+            Codigo = codigo,
+            Mensagem = mensagemPadrao,
+            Detalhe = ambiente.IsDevelopment() ? excecao.Message : detalhePadrao,
+            CodigoRastreio = contexto.TraceIdentifier
         };
-
-        problema.Extensions["codigoRastreio"] = contexto.TraceIdentifier;
 
         contexto.Response.Clear();
         contexto.Response.StatusCode = status;
-        contexto.Response.ContentType = "application/problem+json";
+        contexto.Response.ContentType = "application/json";
 
         await contexto.Response.WriteAsJsonAsync(
-            problema,
+            respostaErro,
             cancellationToken: contexto.RequestAborted);
     }
 
-    private static (int status, string titulo, string detalhePadrao) MapearExcecao(Exception excecao)
+    private static (int status, string codigo, string mensagemPadrao, string detalhePadrao) MapearExcecao(
+        Exception excecao)
     {
         return excecao switch
         {
             InvalidOperationException => (
                 StatusCodes.Status400BadRequest,
-                "Operacao invalida",
+                "operacao_invalida",
+                "A operacao solicitada nao pode ser concluida.",
                 "A operacao solicitada nao pode ser concluida."),
             ArgumentException => (
                 StatusCodes.Status400BadRequest,
-                "Parametro invalido",
+                "parametro_invalido",
+                "Um ou mais parametros informados sao invalidos.",
                 "Um ou mais parametros informados sao invalidos."),
             KeyNotFoundException => (
                 StatusCodes.Status404NotFound,
-                "Recurso nao encontrado",
+                "recurso_nao_encontrado",
+                "O recurso solicitado nao foi localizado.",
                 "O recurso solicitado nao foi localizado."),
             UnauthorizedAccessException => (
                 StatusCodes.Status403Forbidden,
-                "Acesso negado",
+                "acesso_negado",
+                "Voce nao possui permissao para executar esta operacao.",
                 "Voce nao possui permissao para executar esta operacao."),
             _ => (
                 StatusCodes.Status500InternalServerError,
-                "Erro interno",
+                "erro_interno",
+                "Ocorreu um erro interno no servidor.",
                 "Ocorreu um erro interno no servidor.")
         };
     }
