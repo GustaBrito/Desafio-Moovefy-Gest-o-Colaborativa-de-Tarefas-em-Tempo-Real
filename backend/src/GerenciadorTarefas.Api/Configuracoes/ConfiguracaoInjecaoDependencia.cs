@@ -28,6 +28,7 @@ public static class ConfiguracaoInjecaoDependencia
         servicos.AddScoped<IConsultaProjetosCasoDeUso, ConsultaProjetosCasoDeUso>();
         servicos.AddScoped<IExcluirProjetoCasoDeUso, ExcluirProjetoCasoDeUso>();
         servicos.AddScoped<ICriarTarefaCasoDeUso, CriarTarefaCasoDeUso>();
+        servicos.AddScoped<IConsultaTarefasCasoDeUso, ConsultaTarefasCasoDeUso>();
 
         return servicos;
     }
