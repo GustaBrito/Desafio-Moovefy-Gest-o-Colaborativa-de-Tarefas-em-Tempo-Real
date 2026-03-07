@@ -1,0 +1,41 @@
+:root {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #1f2937;
+  background-color: #f3f4f6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.conteudo-principal {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.cartao-boas-vindas {
+  width: min(100%, 720px);
+  border-radius: 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.cartao-boas-vindas h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.75rem;
+}
+
+.cartao-boas-vindas p {
+  margin: 0;
+  color: #4b5563;
+}
