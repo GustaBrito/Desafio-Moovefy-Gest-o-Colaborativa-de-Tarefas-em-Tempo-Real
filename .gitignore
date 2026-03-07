@@ -1,0 +1,34 @@
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDE e editor
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs e temporarios
+*.log
+*.tmp
+*.temp
+
+# .NET
+**/bin/
+**/obj/
+.vs/
+TestResults/
+*.nupkg
+*.snupkg
+
+# Node / Frontend
+**/node_modules/
+**/dist/
+**/.vite/
+**/*.tsbuildinfo
+
+# Ferramentas locais
+.dotnet/
+.nuget/
