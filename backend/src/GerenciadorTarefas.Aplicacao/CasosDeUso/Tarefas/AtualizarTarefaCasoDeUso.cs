@@ -74,9 +74,11 @@ public sealed class AtualizarTarefaCasoDeUso : IAtualizarTarefaCasoDeUso
             throw new ArgumentException("A data de prazo da tarefa deve ser informada.", nameof(entrada));
         }
 
+        var dataAtual = DateTime.UtcNow;
+
         tarefa.Titulo = tituloNormalizado;
         tarefa.Descricao = descricaoNormalizada;
-        tarefa.Status = entrada.Status;
+        tarefa.AtualizarStatus(entrada.Status, dataAtual);
         tarefa.Prioridade = entrada.Prioridade;
         tarefa.ResponsavelId = entrada.ResponsavelId;
         tarefa.DataPrazo = entrada.DataPrazo;
@@ -96,7 +98,7 @@ public sealed class AtualizarTarefaCasoDeUso : IAtualizarTarefaCasoDeUso
             DataCriacao = tarefa.DataCriacao,
             DataPrazo = tarefa.DataPrazo,
             DataConclusao = tarefa.DataConclusao,
-            EstaAtrasada = tarefa.EstaAtrasada(DateTime.UtcNow)
+            EstaAtrasada = tarefa.EstaAtrasada(dataAtual)
         };
     }
 }

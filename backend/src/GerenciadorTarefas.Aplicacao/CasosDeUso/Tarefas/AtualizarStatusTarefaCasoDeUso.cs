@@ -39,7 +39,8 @@ public sealed class AtualizarStatusTarefaCasoDeUso : IAtualizarStatusTarefaCasoD
             throw new KeyNotFoundException($"Tarefa com id '{id}' nao foi encontrada.");
         }
 
-        tarefa.Status = entrada.Status;
+        var dataAtual = DateTime.UtcNow;
+        tarefa.AtualizarStatus(entrada.Status, dataAtual);
 
         repositorioTarefa.Atualizar(tarefa);
         await repositorioTarefa.SalvarAlteracoesAsync(cancellationToken);
@@ -56,7 +57,7 @@ public sealed class AtualizarStatusTarefaCasoDeUso : IAtualizarStatusTarefaCasoD
             DataCriacao = tarefa.DataCriacao,
             DataPrazo = tarefa.DataPrazo,
             DataConclusao = tarefa.DataConclusao,
-            EstaAtrasada = tarefa.EstaAtrasada(DateTime.UtcNow)
+            EstaAtrasada = tarefa.EstaAtrasada(dataAtual)
         };
     }
 }

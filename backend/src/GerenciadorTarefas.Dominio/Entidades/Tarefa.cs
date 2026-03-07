@@ -27,6 +27,11 @@ public class Tarefa
 
     public void AtualizarStatus(StatusTarefa novoStatus, DateTime dataAtual)
     {
+        if (Status == novoStatus)
+        {
+            return;
+        }
+
         if (!PodeTransitarPara(novoStatus))
         {
             throw new InvalidOperationException(
@@ -41,10 +46,7 @@ public class Tarefa
             return;
         }
 
-        if (novoStatus == StatusTarefa.Cancelada)
-        {
-            DataConclusao = null;
-        }
+        DataConclusao = null;
     }
 
     public bool PodeTransitarPara(StatusTarefa novoStatus)
