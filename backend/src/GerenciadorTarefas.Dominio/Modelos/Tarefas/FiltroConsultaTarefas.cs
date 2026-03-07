@@ -9,4 +9,8 @@ public sealed class FiltroConsultaTarefas
     public Guid? ResponsavelId { get; init; }
     public DateTime? DataPrazoInicial { get; init; }
     public DateTime? DataPrazoFinal { get; init; }
+    public CampoOrdenacaoTarefa CampoOrdenacao { get; init; } = CampoOrdenacaoTarefa.DataCriacao;
+    public DirecaoOrdenacaoTarefa DirecaoOrdenacao { get; init; } = DirecaoOrdenacaoTarefa.Descendente;
+    public int Pular { get; init; }
+    public int Tomar { get; init; } = 20;
 }

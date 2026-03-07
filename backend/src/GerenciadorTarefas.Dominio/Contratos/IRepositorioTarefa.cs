@@ -5,7 +5,7 @@ namespace GerenciadorTarefas.Dominio.Contratos;
 
 public interface IRepositorioTarefa
 {
-    Task<IReadOnlyCollection<Tarefa>> ListarAsync(
+    Task<ResultadoConsultaTarefas> ListarAsync(
         FiltroConsultaTarefas filtroConsulta,
         CancellationToken cancellationToken = default);
     Task<Tarefa?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);

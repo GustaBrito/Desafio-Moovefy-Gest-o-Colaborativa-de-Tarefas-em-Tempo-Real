@@ -1,4 +1,5 @@
 using GerenciadorTarefas.Aplicacao.Contratos.Tarefas;
+using GerenciadorTarefas.Aplicacao.Modelos.Paginacao;
 using GerenciadorTarefas.Aplicacao.Modelos.Tarefas;
 using GerenciadorTarefas.Dominio.Contratos;
 using GerenciadorTarefas.Dominio.Entidades;
@@ -15,17 +16,28 @@ public sealed class ConsultaTarefasCasoDeUso : IConsultaTarefasCasoDeUso
         this.repositorioTarefa = repositorioTarefa;
     }
 
-    public async Task<IReadOnlyCollection<TarefaResposta>> ListarAsync(
+    public async Task<ResultadoPaginado<TarefaResposta>> ListarAsync(
         FiltroConsultaTarefasEntrada? filtro = null,
         CancellationToken cancellationToken = default)
     {
-        var filtroNormalizado = CriarFiltroConsulta(filtro);
-        var tarefas = await repositorioTarefa.ListarAsync(filtroNormalizado, cancellationToken);
+        var parametrosPaginacao = new ParametrosPaginacao
+        {
+            NumeroPagina = filtro?.NumeroPagina ?? ParametrosPaginacao.NumeroPaginaPadrao,
+            TamanhoPagina = filtro?.TamanhoPagina ?? ParametrosPaginacao.TamanhoPaginaPadrao
+        };
+
+        var filtroNormalizado = CriarFiltroConsulta(filtro, parametrosPaginacao);
+        var resultadoConsulta = await repositorioTarefa.ListarAsync(filtroNormalizado, cancellationToken);
         var dataReferencia = DateTime.UtcNow;
 
-        return tarefas
+        var tarefas = resultadoConsulta.Itens
             .Select(tarefa => MapearParaResposta(tarefa, dataReferencia))
             .ToList();
+
+        return ResultadoPaginado<TarefaResposta>.Criar(
+            tarefas,
+            resultadoConsulta.TotalRegistros,
+            parametrosPaginacao);
     }
 
     public async Task<TarefaResposta> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -44,11 +56,17 @@ public sealed class ConsultaTarefasCasoDeUso : IConsultaTarefasCasoDeUso
         return MapearParaResposta(tarefa, DateTime.UtcNow);
     }
 
-    private static FiltroConsultaTarefas CriarFiltroConsulta(FiltroConsultaTarefasEntrada? filtro)
+    private static FiltroConsultaTarefas CriarFiltroConsulta(
+        FiltroConsultaTarefasEntrada? filtro,
+        ParametrosPaginacao parametrosPaginacao)
     {
         if (filtro is null)
         {
-            return new FiltroConsultaTarefas();
+            return new FiltroConsultaTarefas
+            {
+                Pular = parametrosPaginacao.Pular,
+                Tomar = parametrosPaginacao.Tomar
+            };
         }
 
         if (filtro.ProjetoId.HasValue && filtro.ProjetoId.Value == Guid.Empty)
@@ -77,7 +95,11 @@ public sealed class ConsultaTarefasCasoDeUso : IConsultaTarefasCasoDeUso
             Status = filtro.Status,
             ResponsavelId = filtro.ResponsavelId,
             DataPrazoInicial = filtro.DataPrazoInicial,
-            DataPrazoFinal = filtro.DataPrazoFinal
+            DataPrazoFinal = filtro.DataPrazoFinal,
+            CampoOrdenacao = filtro.CampoOrdenacao ?? CampoOrdenacaoTarefa.DataCriacao,
+            DirecaoOrdenacao = filtro.DirecaoOrdenacao ?? DirecaoOrdenacaoTarefa.Descendente,
+            Pular = parametrosPaginacao.Pular,
+            Tomar = parametrosPaginacao.Tomar
         };
     }
 

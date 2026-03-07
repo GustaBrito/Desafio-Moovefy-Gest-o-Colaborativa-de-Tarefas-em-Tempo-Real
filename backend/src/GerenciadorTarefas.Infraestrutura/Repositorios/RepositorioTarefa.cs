@@ -15,7 +15,7 @@ public sealed class RepositorioTarefa : IRepositorioTarefa
         this.contextoBancoDados = contextoBancoDados;
     }
 
-    public async Task<IReadOnlyCollection<Tarefa>> ListarAsync(
+    public async Task<ResultadoConsultaTarefas> ListarAsync(
         FiltroConsultaTarefas filtroConsulta,
         CancellationToken cancellationToken = default)
     {
@@ -48,9 +48,15 @@ public sealed class RepositorioTarefa : IRepositorioTarefa
             consulta = consulta.Where(tarefa => tarefa.DataPrazo <= filtroConsulta.DataPrazoFinal.Value);
         }
 
-        return await consulta
-            .OrderByDescending(tarefa => tarefa.DataCriacao)
+        var totalRegistros = await consulta.CountAsync(cancellationToken);
+        consulta = AplicarOrdenacao(consulta, filtroConsulta);
+
+        var tarefas = await consulta
+            .Skip(filtroConsulta.Pular)
+            .Take(filtroConsulta.Tomar)
             .ToListAsync(cancellationToken);
+
+        return new ResultadoConsultaTarefas(tarefas, totalRegistros);
     }
 
     public async Task<Tarefa?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -85,5 +91,35 @@ public sealed class RepositorioTarefa : IRepositorioTarefa
     public void Remover(Tarefa tarefa)
     {
         contextoBancoDados.Tarefas.Remove(tarefa);
+    }
+
+    private static IQueryable<Tarefa> AplicarOrdenacao(
+        IQueryable<Tarefa> consulta,
+        FiltroConsultaTarefas filtroConsulta)
+    {
+        return (filtroConsulta.CampoOrdenacao, filtroConsulta.DirecaoOrdenacao) switch
+        {
+            (CampoOrdenacaoTarefa.Titulo, DirecaoOrdenacaoTarefa.Ascendente)
+                => consulta.OrderBy(tarefa => tarefa.Titulo).ThenBy(tarefa => tarefa.Id),
+            (CampoOrdenacaoTarefa.Titulo, DirecaoOrdenacaoTarefa.Descendente)
+                => consulta.OrderByDescending(tarefa => tarefa.Titulo).ThenBy(tarefa => tarefa.Id),
+            (CampoOrdenacaoTarefa.DataPrazo, DirecaoOrdenacaoTarefa.Ascendente)
+                => consulta.OrderBy(tarefa => tarefa.DataPrazo).ThenBy(tarefa => tarefa.Id),
+            (CampoOrdenacaoTarefa.DataPrazo, DirecaoOrdenacaoTarefa.Descendente)
+                => consulta.OrderByDescending(tarefa => tarefa.DataPrazo).ThenBy(tarefa => tarefa.Id),
+            (CampoOrdenacaoTarefa.Prioridade, DirecaoOrdenacaoTarefa.Ascendente)
+                => consulta.OrderBy(tarefa => tarefa.Prioridade).ThenBy(tarefa => tarefa.Id),
+            (CampoOrdenacaoTarefa.Prioridade, DirecaoOrdenacaoTarefa.Descendente)
+                => consulta.OrderByDescending(tarefa => tarefa.Prioridade).ThenBy(tarefa => tarefa.Id),
+            (CampoOrdenacaoTarefa.Status, DirecaoOrdenacaoTarefa.Ascendente)
+                => consulta.OrderBy(tarefa => tarefa.Status).ThenBy(tarefa => tarefa.Id),
+            (CampoOrdenacaoTarefa.Status, DirecaoOrdenacaoTarefa.Descendente)
+                => consulta.OrderByDescending(tarefa => tarefa.Status).ThenBy(tarefa => tarefa.Id),
+            (CampoOrdenacaoTarefa.DataCriacao, DirecaoOrdenacaoTarefa.Ascendente)
+                => consulta.OrderBy(tarefa => tarefa.DataCriacao).ThenBy(tarefa => tarefa.Id),
+            (CampoOrdenacaoTarefa.DataCriacao, DirecaoOrdenacaoTarefa.Descendente)
+                => consulta.OrderByDescending(tarefa => tarefa.DataCriacao).ThenBy(tarefa => tarefa.Id),
+            _ => consulta.OrderByDescending(tarefa => tarefa.DataCriacao).ThenBy(tarefa => tarefa.Id)
+        };
     }
 }
