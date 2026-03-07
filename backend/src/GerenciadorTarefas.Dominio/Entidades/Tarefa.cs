@@ -17,12 +17,12 @@ public class Tarefa
 
     public bool EstaAtrasada(DateTime dataReferencia)
     {
-        if (Status is StatusTarefa.Concluida or StatusTarefa.Cancelada)
+        if (Status is not (StatusTarefa.Pendente or StatusTarefa.EmAndamento))
         {
             return false;
         }
 
-        return DataPrazo < dataReferencia;
+        return DataPrazo.Date < dataReferencia.Date;
     }
 
     public void AtualizarStatus(StatusTarefa novoStatus, DateTime dataAtual)
