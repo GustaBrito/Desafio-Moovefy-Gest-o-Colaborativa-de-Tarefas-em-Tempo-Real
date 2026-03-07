@@ -7,10 +7,12 @@ construtorAplicacao.Logging.AddConsole();
 
 construtorAplicacao.Services.AdicionarInjecaoDependencia(construtorAplicacao.Configuration);
 construtorAplicacao.Services.AdicionarDocumentacaoApi();
+construtorAplicacao.Services.AdicionarTratamentoExcecaoGlobal();
 construtorAplicacao.Services.AddControllers();
 
 var aplicacao = construtorAplicacao.Build();
 
+aplicacao.UsarTratamentoExcecaoGlobal();
 aplicacao.UsarDocumentacaoApi();
 aplicacao.UseHttpsRedirection();
 aplicacao.UseAuthorization();
