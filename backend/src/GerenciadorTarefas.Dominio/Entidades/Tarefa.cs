@@ -1,3 +1,5 @@
+using GerenciadorTarefas.Dominio.Enumeracoes;
+
 namespace GerenciadorTarefas.Dominio.Entidades;
 
 public class Tarefa
@@ -5,11 +7,60 @@ public class Tarefa
     public Guid Id { get; set; }
     public string Titulo { get; set; } = string.Empty;
     public string? Descricao { get; set; }
-    public int Status { get; set; }
-    public int Prioridade { get; set; }
+    public StatusTarefa Status { get; set; } = StatusTarefa.Pendente;
+    public PrioridadeTarefa Prioridade { get; set; } = PrioridadeTarefa.Media;
     public Guid ProjetoId { get; set; }
     public Guid ResponsavelId { get; set; }
     public DateTime DataCriacao { get; set; }
     public DateTime DataPrazo { get; set; }
     public DateTime? DataConclusao { get; set; }
+
+    public bool EstaAtrasada(DateTime dataReferencia)
+    {
+        if (Status is StatusTarefa.Concluida or StatusTarefa.Cancelada)
+        {
+            return false;
+        }
+
+        return DataPrazo < dataReferencia;
+    }
+
+    public void AtualizarStatus(StatusTarefa novoStatus, DateTime dataAtual)
+    {
+        if (!PodeTransitarPara(novoStatus))
+        {
+            throw new InvalidOperationException(
+                $"Transicao de status invalida: {Status} -> {novoStatus}.");
+        }
+
+        Status = novoStatus;
+
+        if (novoStatus == StatusTarefa.Concluida)
+        {
+            DataConclusao = dataAtual;
+            return;
+        }
+
+        if (novoStatus == StatusTarefa.Cancelada)
+        {
+            DataConclusao = null;
+        }
+    }
+
+    public bool PodeTransitarPara(StatusTarefa novoStatus)
+    {
+        if (Status == novoStatus)
+        {
+            return true;
+        }
+
+        return Status switch
+        {
+            StatusTarefa.Pendente => novoStatus is StatusTarefa.EmAndamento or StatusTarefa.Cancelada,
+            StatusTarefa.EmAndamento => novoStatus is StatusTarefa.Concluida or StatusTarefa.Cancelada,
+            StatusTarefa.Concluida => false,
+            StatusTarefa.Cancelada => false,
+            _ => false
+        };
+    }
 }
