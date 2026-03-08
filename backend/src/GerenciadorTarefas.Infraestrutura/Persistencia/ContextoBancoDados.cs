@@ -11,6 +11,7 @@ public sealed class ContextoBancoDados : DbContext
     }
 
     public DbSet<Projeto> Projetos => Set<Projeto>();
+    public DbSet<Notificacao> Notificacoes => Set<Notificacao>();
     public DbSet<Tarefa> Tarefas => Set<Tarefa>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

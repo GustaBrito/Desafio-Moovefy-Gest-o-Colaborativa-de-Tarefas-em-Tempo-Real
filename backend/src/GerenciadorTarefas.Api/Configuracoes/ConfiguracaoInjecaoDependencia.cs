@@ -1,4 +1,5 @@
 using GerenciadorTarefas.Aplicacao.CasosDeUso.Dashboard;
+using GerenciadorTarefas.Aplicacao.CasosDeUso.Notificacoes;
 using GerenciadorTarefas.Aplicacao.CasosDeUso.Projetos;
 using GerenciadorTarefas.Aplicacao.CasosDeUso.Tarefas;
 using GerenciadorTarefas.Aplicacao.Contratos.Dashboard;
@@ -26,8 +27,10 @@ public static class ConfiguracaoInjecaoDependencia
             opcoes.UseNpgsql(stringConexao));
 
         servicos.AddScoped<INotificadorTempoRealTarefas, NotificadorTempoRealTarefasSignalR>();
+        servicos.AddScoped<IRepositorioNotificacao, RepositorioNotificacao>();
         servicos.AddScoped<IRepositorioProjeto, RepositorioProjeto>();
         servicos.AddScoped<IRepositorioTarefa, RepositorioTarefa>();
+        servicos.AddScoped<IConsultaHistoricoNotificacoesCasoDeUso, ConsultaHistoricoNotificacoesCasoDeUso>();
         servicos.AddScoped<IConsultaMetricasDashboardCasoDeUso, ConsultaMetricasDashboardCasoDeUso>();
         servicos.AddScoped<IAtualizarProjetoCasoDeUso, AtualizarProjetoCasoDeUso>();
         servicos.AddScoped<ICriarProjetoCasoDeUso, CriarProjetoCasoDeUso>();

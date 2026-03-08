@@ -1,5 +1,7 @@
 using GerenciadorTarefas.Aplicacao.Contratos.Notificacoes;
 using GerenciadorTarefas.Api.Hubs;
+using GerenciadorTarefas.Dominio.Contratos;
+using GerenciadorTarefas.Dominio.Entidades;
 using Microsoft.AspNetCore.SignalR;
 
 namespace GerenciadorTarefas.Api.Servicos.Notificacoes;
@@ -7,10 +9,14 @@ namespace GerenciadorTarefas.Api.Servicos.Notificacoes;
 public sealed class NotificadorTempoRealTarefasSignalR : INotificadorTempoRealTarefas
 {
     private readonly IHubContext<HubNotificacoes> contextoHubNotificacoes;
+    private readonly IRepositorioNotificacao repositorioNotificacao;
 
-    public NotificadorTempoRealTarefasSignalR(IHubContext<HubNotificacoes> contextoHubNotificacoes)
+    public NotificadorTempoRealTarefasSignalR(
+        IHubContext<HubNotificacoes> contextoHubNotificacoes,
+        IRepositorioNotificacao repositorioNotificacao)
     {
         this.contextoHubNotificacoes = contextoHubNotificacoes;
+        this.repositorioNotificacao = repositorioNotificacao;
     }
 
     public async Task NotificarAtribuicaoAsync(
@@ -36,6 +42,22 @@ public sealed class NotificadorTempoRealTarefasSignalR : INotificadorTempoRealTa
         var mensagem = reatribuicao
             ? "Uma tarefa foi reatribuida para voce."
             : "Uma nova tarefa foi atribuida para voce.";
+        var dataOcorrencia = DateTime.UtcNow;
+
+        var notificacao = new Notificacao
+        {
+            Id = Guid.NewGuid(),
+            ResponsavelId = responsavelId,
+            TarefaId = tarefaId,
+            ProjetoId = projetoId,
+            TituloTarefa = tituloNormalizado,
+            Mensagem = mensagem,
+            Reatribuicao = reatribuicao,
+            DataCriacao = dataOcorrencia
+        };
+
+        await repositorioNotificacao.AdicionarAsync(notificacao, cancellationToken);
+        await repositorioNotificacao.SalvarAlteracoesAsync(cancellationToken);
 
         await contextoHubNotificacoes.Clients
             .Group(canalResponsavel)
@@ -49,7 +71,7 @@ public sealed class NotificadorTempoRealTarefasSignalR : INotificadorTempoRealTa
                     TituloTarefa = tituloNormalizado,
                     Reatribuicao = reatribuicao,
                     Mensagem = mensagem,
-                    DataOcorrencia = DateTime.UtcNow
+                    DataOcorrencia = dataOcorrencia
                 },
                 cancellationToken);
     }
