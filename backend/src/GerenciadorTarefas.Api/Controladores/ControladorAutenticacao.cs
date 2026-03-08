@@ -1,9 +1,11 @@
 using GerenciadorTarefas.Api.Contratos.Requisicoes.Autenticacao;
 using GerenciadorTarefas.Api.Contratos.Respostas;
 using GerenciadorTarefas.Api.Contratos.Respostas.Autenticacao;
+using GerenciadorTarefas.Api.Configuracoes;
 using GerenciadorTarefas.Api.Servicos.Autenticacao;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace GerenciadorTarefas.Api.Controladores;
 
@@ -20,7 +22,9 @@ public sealed class ControladorAutenticacao : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("login")]
+    [EnableRateLimiting(ConfiguracaoRateLimiting.NomePoliticaRateLimitLogin)]
     [ProducesResponseType(typeof(RespostaSucessoApi<LoginResposta>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RespostaErroApi), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<RespostaSucessoApi<LoginResposta>>> LoginAsync(
         [FromBody] LoginRequisicao requisicao,
         CancellationToken cancellationToken)
