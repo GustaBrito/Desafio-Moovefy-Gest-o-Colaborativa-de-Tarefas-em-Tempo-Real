@@ -91,6 +91,11 @@ As seguintes regras serão tratadas como centrais no domínio/aplicação:
 - sinalização de tarefas vencidas
 - tratamento explícito de `Cancelada` como decisão técnica documentada
 
+Detalhamento do cancelamento:
+- `Cancelada` é estado terminal
+- cancelamento permitido apenas a partir de `Pendente` ou `EmAndamento`
+- não existe reabertura por transição de status após `Cancelada` ou `Concluida`
+
 ## 6. Observabilidade, Segurança e Escalabilidade
 Capacidades previstas:
 - logging estruturado com Serilog

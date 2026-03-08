@@ -69,8 +69,33 @@ Trade-off: evitar complexidade antecipada.
 
 ## 11. Registro de Evolução
 Este documento será atualizado ao longo dos commits para registrar decisões complementares, incluindo:
-- política final para status `Cancelada`
 - estratégia de cache
 - política de rate limiting
 - decisões finais de autenticação
 - decisões finais de notificações
+
+## 12. Decisão Técnica: Status `Cancelada` como Estado Terminal
+### 12.1 Regra adotada
+O status `Cancelada` é tratado como estado terminal da tarefa.
+
+Isso significa:
+- transições permitidas para cancelamento: `Pendente -> Cancelada` e `EmAndamento -> Cancelada`
+- não é permitido sair de `Cancelada` para qualquer outro status
+- não é permitido sair de `Concluida` para qualquer outro status
+
+### 12.2 Fluxo oficial de status
+- fluxo principal: `Pendente -> EmAndamento -> Concluida`
+- fluxo alternativo de encerramento: `Pendente/EmAndamento -> Cancelada`
+
+### 12.3 Justificativa técnica
+1. Preserva histórico e rastreabilidade: tarefa cancelada não deve ser reaberta por transição de status.
+2. Evita ambiguidade operacional: reduz cenários de ida e volta entre estados finais.
+3. Simplifica manutenção da regra no domínio: máquina de estados explícita e previsível.
+
+### 12.4 Impacto na API
+- tentativas de transição inválida resultam em erro de operação inválida (HTTP 400 pelo tratamento global)
+- a validação de transição permanece centralizada no domínio, não em controllers
+
+### 12.5 Relação com outras regras
+- `DataConclusao` é preenchida automaticamente apenas em `Concluida`
+- tarefas `Cancelada` não são consideradas atrasadas
