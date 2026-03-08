@@ -1,6 +1,7 @@
 using GerenciadorTarefas.Aplicacao.Contratos.Dashboard;
 using GerenciadorTarefas.Aplicacao.Modelos.Dashboard;
 using GerenciadorTarefas.Api.Contratos.Respostas;
+using GerenciadorTarefas.Api.Servicos.Cache;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,10 +13,14 @@ namespace GerenciadorTarefas.Api.Controladores;
 public sealed class ControladorDashboard : ControllerBase
 {
     private readonly IConsultaMetricasDashboardCasoDeUso consultaMetricasDashboardCasoDeUso;
+    private readonly IServicoCacheConsulta servicoCacheConsulta;
 
-    public ControladorDashboard(IConsultaMetricasDashboardCasoDeUso consultaMetricasDashboardCasoDeUso)
+    public ControladorDashboard(
+        IConsultaMetricasDashboardCasoDeUso consultaMetricasDashboardCasoDeUso,
+        IServicoCacheConsulta servicoCacheConsulta)
     {
         this.consultaMetricasDashboardCasoDeUso = consultaMetricasDashboardCasoDeUso;
+        this.servicoCacheConsulta = servicoCacheConsulta;
     }
 
     [HttpGet("metricas")]
@@ -23,7 +28,11 @@ public sealed class ControladorDashboard : ControllerBase
     public async Task<ActionResult<RespostaSucessoApi<MetricasDashboardResposta>>> ObterMetricasAsync(
         CancellationToken cancellationToken)
     {
-        var metricas = await consultaMetricasDashboardCasoDeUso.ExecutarAsync(cancellationToken);
+        var metricas = await servicoCacheConsulta.ObterOuCriarAsync(
+            ChavesCacheConsulta.ObterMetricasDashboard(),
+            PoliticasCacheConsulta.DuracaoDashboard,
+            _ => consultaMetricasDashboardCasoDeUso.ExecutarAsync(cancellationToken),
+            cancellationToken);
 
         var resposta = new RespostaSucessoApi<MetricasDashboardResposta>
         {

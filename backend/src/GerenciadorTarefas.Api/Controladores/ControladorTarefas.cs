@@ -3,6 +3,7 @@ using GerenciadorTarefas.Aplicacao.Modelos.Paginacao;
 using GerenciadorTarefas.Aplicacao.Modelos.Tarefas;
 using GerenciadorTarefas.Api.Contratos.Requisicoes.Tarefas;
 using GerenciadorTarefas.Api.Contratos.Respostas;
+using GerenciadorTarefas.Api.Servicos.Cache;
 using GerenciadorTarefas.Dominio.Enumeracoes;
 using GerenciadorTarefas.Dominio.Modelos.Tarefas;
 using Microsoft.AspNetCore.Authorization;
@@ -20,19 +21,22 @@ public sealed class ControladorTarefas : ControllerBase
     private readonly IAtualizarTarefaCasoDeUso atualizarTarefaCasoDeUso;
     private readonly IAtualizarStatusTarefaCasoDeUso atualizarStatusTarefaCasoDeUso;
     private readonly IExcluirTarefaCasoDeUso excluirTarefaCasoDeUso;
+    private readonly IServicoCacheConsulta servicoCacheConsulta;
 
     public ControladorTarefas(
         IConsultaTarefasCasoDeUso consultaTarefasCasoDeUso,
         ICriarTarefaCasoDeUso criarTarefaCasoDeUso,
         IAtualizarTarefaCasoDeUso atualizarTarefaCasoDeUso,
         IAtualizarStatusTarefaCasoDeUso atualizarStatusTarefaCasoDeUso,
-        IExcluirTarefaCasoDeUso excluirTarefaCasoDeUso)
+        IExcluirTarefaCasoDeUso excluirTarefaCasoDeUso,
+        IServicoCacheConsulta servicoCacheConsulta)
     {
         this.consultaTarefasCasoDeUso = consultaTarefasCasoDeUso;
         this.criarTarefaCasoDeUso = criarTarefaCasoDeUso;
         this.atualizarTarefaCasoDeUso = atualizarTarefaCasoDeUso;
         this.atualizarStatusTarefaCasoDeUso = atualizarStatusTarefaCasoDeUso;
         this.excluirTarefaCasoDeUso = excluirTarefaCasoDeUso;
+        this.servicoCacheConsulta = servicoCacheConsulta;
     }
 
     [HttpGet]
@@ -62,7 +66,22 @@ public sealed class ControladorTarefas : ControllerBase
             TamanhoPagina = tamanhoPagina
         };
 
-        var tarefas = await consultaTarefasCasoDeUso.ListarAsync(filtro, cancellationToken);
+        var chaveCache = ChavesCacheConsulta.ObterListaTarefas(
+            projetoId,
+            status,
+            responsavelId,
+            dataPrazoInicial,
+            dataPrazoFinal,
+            campoOrdenacao,
+            direcaoOrdenacao,
+            numeroPagina,
+            tamanhoPagina);
+
+        var tarefas = await servicoCacheConsulta.ObterOuCriarAsync(
+            chaveCache,
+            PoliticasCacheConsulta.DuracaoTarefas,
+            _ => consultaTarefasCasoDeUso.ListarAsync(filtro, cancellationToken),
+            cancellationToken);
 
         var resposta = new RespostaSucessoApi<ResultadoPaginado<TarefaResposta>>
         {
@@ -80,7 +99,11 @@ public sealed class ControladorTarefas : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
-        var tarefa = await consultaTarefasCasoDeUso.ObterPorIdAsync(id, cancellationToken);
+        var tarefa = await servicoCacheConsulta.ObterOuCriarAsync(
+            ChavesCacheConsulta.ObterTarefaPorId(id),
+            PoliticasCacheConsulta.DuracaoTarefas,
+            _ => consultaTarefasCasoDeUso.ObterPorIdAsync(id, cancellationToken),
+            cancellationToken);
 
         var resposta = new RespostaSucessoApi<TarefaResposta>
         {
@@ -109,6 +132,7 @@ public sealed class ControladorTarefas : ControllerBase
         };
 
         var tarefaCriada = await criarTarefaCasoDeUso.ExecutarAsync(entrada, cancellationToken);
+        InvalidarCacheTarefasEDashboard();
 
         var resposta = new RespostaSucessoApi<TarefaResposta>
         {
@@ -138,6 +162,7 @@ public sealed class ControladorTarefas : ControllerBase
         };
 
         var tarefaAtualizada = await atualizarTarefaCasoDeUso.ExecutarAsync(id, entrada, cancellationToken);
+        InvalidarCacheTarefasEDashboard();
 
         var resposta = new RespostaSucessoApi<TarefaResposta>
         {
@@ -162,6 +187,7 @@ public sealed class ControladorTarefas : ControllerBase
         };
 
         var tarefaAtualizada = await atualizarStatusTarefaCasoDeUso.ExecutarAsync(id, entrada, cancellationToken);
+        InvalidarCacheTarefasEDashboard();
 
         var resposta = new RespostaSucessoApi<TarefaResposta>
         {
@@ -180,6 +206,7 @@ public sealed class ControladorTarefas : ControllerBase
         CancellationToken cancellationToken)
     {
         await excluirTarefaCasoDeUso.ExecutarAsync(id, cancellationToken);
+        InvalidarCacheTarefasEDashboard();
 
         var resposta = new RespostaSucessoApi<object?>
         {
@@ -189,5 +216,11 @@ public sealed class ControladorTarefas : ControllerBase
         };
 
         return Ok(resposta);
+    }
+
+    private void InvalidarCacheTarefasEDashboard()
+    {
+        servicoCacheConsulta.RemoverPorPrefixo(ChavesCacheConsulta.PrefixoTarefas);
+        servicoCacheConsulta.Remover(ChavesCacheConsulta.ObterMetricasDashboard());
     }
 }

@@ -2,6 +2,7 @@ using GerenciadorTarefas.Aplicacao.Contratos.Projetos;
 using GerenciadorTarefas.Aplicacao.Modelos.Projetos;
 using GerenciadorTarefas.Api.Contratos.Requisicoes.Projetos;
 using GerenciadorTarefas.Api.Contratos.Respostas;
+using GerenciadorTarefas.Api.Servicos.Cache;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,17 +17,20 @@ public sealed class ControladorProjetos : ControllerBase
     private readonly ICriarProjetoCasoDeUso criarProjetoCasoDeUso;
     private readonly IAtualizarProjetoCasoDeUso atualizarProjetoCasoDeUso;
     private readonly IExcluirProjetoCasoDeUso excluirProjetoCasoDeUso;
+    private readonly IServicoCacheConsulta servicoCacheConsulta;
 
     public ControladorProjetos(
         IConsultaProjetosCasoDeUso consultaProjetosCasoDeUso,
         ICriarProjetoCasoDeUso criarProjetoCasoDeUso,
         IAtualizarProjetoCasoDeUso atualizarProjetoCasoDeUso,
-        IExcluirProjetoCasoDeUso excluirProjetoCasoDeUso)
+        IExcluirProjetoCasoDeUso excluirProjetoCasoDeUso,
+        IServicoCacheConsulta servicoCacheConsulta)
     {
         this.consultaProjetosCasoDeUso = consultaProjetosCasoDeUso;
         this.criarProjetoCasoDeUso = criarProjetoCasoDeUso;
         this.atualizarProjetoCasoDeUso = atualizarProjetoCasoDeUso;
         this.excluirProjetoCasoDeUso = excluirProjetoCasoDeUso;
+        this.servicoCacheConsulta = servicoCacheConsulta;
     }
 
     [HttpGet]
@@ -34,7 +38,11 @@ public sealed class ControladorProjetos : ControllerBase
     public async Task<ActionResult<RespostaSucessoApi<IReadOnlyCollection<ProjetoResposta>>>> ListarProjetosAsync(
         CancellationToken cancellationToken)
     {
-        var projetos = await consultaProjetosCasoDeUso.ListarAsync(cancellationToken);
+        var projetos = await servicoCacheConsulta.ObterOuCriarAsync(
+            ChavesCacheConsulta.ObterListaProjetos(),
+            PoliticasCacheConsulta.DuracaoProjetos,
+            _ => consultaProjetosCasoDeUso.ListarAsync(cancellationToken),
+            cancellationToken);
 
         var resposta = new RespostaSucessoApi<IReadOnlyCollection<ProjetoResposta>>
         {
@@ -52,7 +60,11 @@ public sealed class ControladorProjetos : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
-        var projeto = await consultaProjetosCasoDeUso.ObterPorIdAsync(id, cancellationToken);
+        var projeto = await servicoCacheConsulta.ObterOuCriarAsync(
+            ChavesCacheConsulta.ObterProjetoPorId(id),
+            PoliticasCacheConsulta.DuracaoProjetos,
+            _ => consultaProjetosCasoDeUso.ObterPorIdAsync(id, cancellationToken),
+            cancellationToken);
 
         var resposta = new RespostaSucessoApi<ProjetoResposta>
         {
@@ -77,6 +89,7 @@ public sealed class ControladorProjetos : ControllerBase
         };
 
         var projetoCriado = await criarProjetoCasoDeUso.ExecutarAsync(entrada, cancellationToken);
+        InvalidarCacheProjetos();
 
         var resposta = new RespostaSucessoApi<ProjetoResposta>
         {
@@ -102,6 +115,7 @@ public sealed class ControladorProjetos : ControllerBase
         };
 
         var projetoAtualizado = await atualizarProjetoCasoDeUso.ExecutarAsync(id, entrada, cancellationToken);
+        InvalidarCacheProjetos();
 
         var resposta = new RespostaSucessoApi<ProjetoResposta>
         {
@@ -120,6 +134,7 @@ public sealed class ControladorProjetos : ControllerBase
         CancellationToken cancellationToken)
     {
         await excluirProjetoCasoDeUso.ExecutarAsync(id, cancellationToken);
+        InvalidarCacheProjetos();
 
         var resposta = new RespostaSucessoApi<object?>
         {
@@ -129,5 +144,10 @@ public sealed class ControladorProjetos : ControllerBase
         };
 
         return Ok(resposta);
+    }
+
+    private void InvalidarCacheProjetos()
+    {
+        servicoCacheConsulta.RemoverPorPrefixo(ChavesCacheConsulta.PrefixoProjetos);
     }
 }
