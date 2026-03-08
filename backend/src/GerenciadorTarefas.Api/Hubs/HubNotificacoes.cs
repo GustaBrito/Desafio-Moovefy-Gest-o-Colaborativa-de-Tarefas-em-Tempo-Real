@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace GerenciadorTarefas.Api.Hubs;
 
+[Authorize]
 public sealed class HubNotificacoes : Hub
 {
     public async Task EntrarNoCanalResponsavelAsync(Guid responsavelId)

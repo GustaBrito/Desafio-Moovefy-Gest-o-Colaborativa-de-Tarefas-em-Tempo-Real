@@ -13,7 +13,32 @@ public static class ConfiguracaoDocumentacaoApi
             {
                 Title = "Gerenciador de Tarefas API",
                 Version = "v1",
-                Description = "API para gestão colaborativa de projetos e tarefas."
+                Description = "API para gestao colaborativa de projetos e tarefas."
+            });
+
+            opcoes.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Name = "Authorization",
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT",
+                In = ParameterLocation.Header,
+                Description = "Informe o token JWT no formato Bearer."
+            });
+
+            opcoes.AddSecurityRequirement(new OpenApiSecurityRequirement
+            {
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "Bearer"
+                        }
+                    },
+                    Array.Empty<string>()
+                }
             });
         });
 

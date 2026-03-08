@@ -6,6 +6,7 @@ using GerenciadorTarefas.Aplicacao.Contratos.Dashboard;
 using GerenciadorTarefas.Aplicacao.Contratos.Notificacoes;
 using GerenciadorTarefas.Aplicacao.Contratos.Projetos;
 using GerenciadorTarefas.Aplicacao.Contratos.Tarefas;
+using GerenciadorTarefas.Api.Servicos.Autenticacao;
 using GerenciadorTarefas.Api.Servicos.Notificacoes;
 using GerenciadorTarefas.Dominio.Contratos;
 using GerenciadorTarefas.Infraestrutura.Persistencia;
@@ -26,6 +27,7 @@ public static class ConfiguracaoInjecaoDependencia
         servicos.AddDbContext<ContextoBancoDados>(opcoes =>
             opcoes.UseNpgsql(stringConexao));
 
+        servicos.AddScoped<IServicoAutenticacao, ServicoAutenticacaoJwt>();
         servicos.AddScoped<INotificadorTempoRealTarefas, NotificadorTempoRealTarefasSignalR>();
         servicos.AddScoped<IRepositorioNotificacao, RepositorioNotificacao>();
         servicos.AddScoped<IRepositorioProjeto, RepositorioProjeto>();

@@ -2,11 +2,13 @@ using GerenciadorTarefas.Aplicacao.Contratos.Projetos;
 using GerenciadorTarefas.Aplicacao.Modelos.Projetos;
 using GerenciadorTarefas.Api.Contratos.Requisicoes.Projetos;
 using GerenciadorTarefas.Api.Contratos.Respostas;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GerenciadorTarefas.Api.Controladores;
 
 [ApiController]
+[Authorize]
 [Route("api/projetos")]
 public sealed class ControladorProjetos : ControllerBase
 {

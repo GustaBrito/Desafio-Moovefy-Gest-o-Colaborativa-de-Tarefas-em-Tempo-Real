@@ -75,10 +75,10 @@ public sealed class MiddlewareTratamentoExcecaoGlobal
                 "O recurso solicitado nao foi localizado.",
                 "O recurso solicitado nao foi localizado."),
             UnauthorizedAccessException => (
-                StatusCodes.Status403Forbidden,
-                "acesso_negado",
-                "Voce nao possui permissao para executar esta operacao.",
-                "Voce nao possui permissao para executar esta operacao."),
+                StatusCodes.Status401Unauthorized,
+                "nao_autenticado",
+                "Autenticacao nao realizada ou invalida.",
+                "Autenticacao nao realizada ou invalida."),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "erro_interno",

@@ -6,6 +6,7 @@ var construtorAplicacao = WebApplication.CreateBuilder(args);
 construtorAplicacao.AdicionarObservabilidade();
 
 construtorAplicacao.Services.AdicionarInjecaoDependencia(construtorAplicacao.Configuration);
+construtorAplicacao.Services.AdicionarAutenticacaoJwt(construtorAplicacao.Configuration);
 construtorAplicacao.Services.AdicionarDocumentacaoApi();
 construtorAplicacao.Services.AdicionarTratamentoExcecaoGlobal();
 construtorAplicacao.Services.AdicionarPadraoRespostaApi();
@@ -19,6 +20,7 @@ aplicacao.UseSerilogRequestLogging();
 aplicacao.UsarTratamentoExcecaoGlobal();
 aplicacao.UsarDocumentacaoApi();
 aplicacao.UseHttpsRedirection();
+aplicacao.UseAuthentication();
 aplicacao.UseAuthorization();
 aplicacao.MapControllers();
 aplicacao.MapHub<HubNotificacoes>("/hubs/notificacoes");

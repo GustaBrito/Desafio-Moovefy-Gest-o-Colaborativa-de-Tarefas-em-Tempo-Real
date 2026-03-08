@@ -1,11 +1,13 @@
 using GerenciadorTarefas.Aplicacao.Contratos.Dashboard;
 using GerenciadorTarefas.Aplicacao.Modelos.Dashboard;
 using GerenciadorTarefas.Api.Contratos.Respostas;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GerenciadorTarefas.Api.Controladores;
 
 [ApiController]
+[Authorize]
 [Route("api/dashboard")]
 public sealed class ControladorDashboard : ControllerBase
 {

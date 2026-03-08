@@ -1,11 +1,13 @@
 using GerenciadorTarefas.Aplicacao.Contratos.Notificacoes;
 using GerenciadorTarefas.Aplicacao.Modelos.Notificacoes;
 using GerenciadorTarefas.Api.Contratos.Respostas;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GerenciadorTarefas.Api.Controladores;
 
 [ApiController]
+[Authorize]
 [Route("api/notificacoes")]
 public sealed class ControladorNotificacoes : ControllerBase
 {

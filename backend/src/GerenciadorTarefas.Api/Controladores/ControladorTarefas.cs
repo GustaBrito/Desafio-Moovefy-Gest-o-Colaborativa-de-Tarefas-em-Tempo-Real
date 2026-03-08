@@ -5,11 +5,13 @@ using GerenciadorTarefas.Api.Contratos.Requisicoes.Tarefas;
 using GerenciadorTarefas.Api.Contratos.Respostas;
 using GerenciadorTarefas.Dominio.Enumeracoes;
 using GerenciadorTarefas.Dominio.Modelos.Tarefas;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GerenciadorTarefas.Api.Controladores;
 
 [ApiController]
+[Authorize]
 [Route("api/tarefas")]
 public sealed class ControladorTarefas : ControllerBase
 {
