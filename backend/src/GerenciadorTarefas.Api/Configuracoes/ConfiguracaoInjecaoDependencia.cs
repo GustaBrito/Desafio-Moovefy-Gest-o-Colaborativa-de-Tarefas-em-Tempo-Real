@@ -2,8 +2,10 @@ using GerenciadorTarefas.Aplicacao.CasosDeUso.Dashboard;
 using GerenciadorTarefas.Aplicacao.CasosDeUso.Projetos;
 using GerenciadorTarefas.Aplicacao.CasosDeUso.Tarefas;
 using GerenciadorTarefas.Aplicacao.Contratos.Dashboard;
+using GerenciadorTarefas.Aplicacao.Contratos.Notificacoes;
 using GerenciadorTarefas.Aplicacao.Contratos.Projetos;
 using GerenciadorTarefas.Aplicacao.Contratos.Tarefas;
+using GerenciadorTarefas.Api.Servicos.Notificacoes;
 using GerenciadorTarefas.Dominio.Contratos;
 using GerenciadorTarefas.Infraestrutura.Persistencia;
 using GerenciadorTarefas.Infraestrutura.Repositorios;
@@ -23,6 +25,7 @@ public static class ConfiguracaoInjecaoDependencia
         servicos.AddDbContext<ContextoBancoDados>(opcoes =>
             opcoes.UseNpgsql(stringConexao));
 
+        servicos.AddScoped<INotificadorTempoRealTarefas, NotificadorTempoRealTarefasSignalR>();
         servicos.AddScoped<IRepositorioProjeto, RepositorioProjeto>();
         servicos.AddScoped<IRepositorioTarefa, RepositorioTarefa>();
         servicos.AddScoped<IConsultaMetricasDashboardCasoDeUso, ConsultaMetricasDashboardCasoDeUso>();

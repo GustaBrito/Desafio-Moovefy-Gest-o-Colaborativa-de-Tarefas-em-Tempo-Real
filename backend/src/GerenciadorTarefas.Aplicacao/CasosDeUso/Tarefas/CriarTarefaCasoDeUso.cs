@@ -1,3 +1,4 @@
+using GerenciadorTarefas.Aplicacao.Contratos.Notificacoes;
 using GerenciadorTarefas.Aplicacao.Contratos.Tarefas;
 using GerenciadorTarefas.Aplicacao.Modelos.Tarefas;
 using GerenciadorTarefas.Dominio.Contratos;
@@ -10,13 +11,16 @@ public sealed class CriarTarefaCasoDeUso : ICriarTarefaCasoDeUso
 {
     private readonly IRepositorioProjeto repositorioProjeto;
     private readonly IRepositorioTarefa repositorioTarefa;
+    private readonly INotificadorTempoRealTarefas notificadorTempoRealTarefas;
 
     public CriarTarefaCasoDeUso(
         IRepositorioProjeto repositorioProjeto,
-        IRepositorioTarefa repositorioTarefa)
+        IRepositorioTarefa repositorioTarefa,
+        INotificadorTempoRealTarefas notificadorTempoRealTarefas)
     {
         this.repositorioProjeto = repositorioProjeto;
         this.repositorioTarefa = repositorioTarefa;
+        this.notificadorTempoRealTarefas = notificadorTempoRealTarefas;
     }
 
     public async Task<TarefaResposta> ExecutarAsync(
@@ -91,6 +95,13 @@ public sealed class CriarTarefaCasoDeUso : ICriarTarefaCasoDeUso
 
         await repositorioTarefa.AdicionarAsync(tarefa, cancellationToken);
         await repositorioTarefa.SalvarAlteracoesAsync(cancellationToken);
+        await notificadorTempoRealTarefas.NotificarAtribuicaoAsync(
+            tarefa.ResponsavelId,
+            tarefa.Id,
+            tarefa.ProjetoId,
+            tarefa.Titulo,
+            reatribuicao: false,
+            cancellationToken);
 
         return MapearParaResposta(tarefa, dataAtual);
     }

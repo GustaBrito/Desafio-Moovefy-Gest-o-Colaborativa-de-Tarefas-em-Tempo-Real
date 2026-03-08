@@ -1,3 +1,4 @@
+using GerenciadorTarefas.Aplicacao.Contratos.Notificacoes;
 using GerenciadorTarefas.Aplicacao.Contratos.Tarefas;
 using GerenciadorTarefas.Aplicacao.Modelos.Tarefas;
 using GerenciadorTarefas.Dominio.Contratos;
@@ -7,10 +8,14 @@ namespace GerenciadorTarefas.Aplicacao.CasosDeUso.Tarefas;
 public sealed class AtualizarTarefaCasoDeUso : IAtualizarTarefaCasoDeUso
 {
     private readonly IRepositorioTarefa repositorioTarefa;
+    private readonly INotificadorTempoRealTarefas notificadorTempoRealTarefas;
 
-    public AtualizarTarefaCasoDeUso(IRepositorioTarefa repositorioTarefa)
+    public AtualizarTarefaCasoDeUso(
+        IRepositorioTarefa repositorioTarefa,
+        INotificadorTempoRealTarefas notificadorTempoRealTarefas)
     {
         this.repositorioTarefa = repositorioTarefa;
+        this.notificadorTempoRealTarefas = notificadorTempoRealTarefas;
     }
 
     public async Task<TarefaResposta> ExecutarAsync(
@@ -76,6 +81,8 @@ public sealed class AtualizarTarefaCasoDeUso : IAtualizarTarefaCasoDeUso
 
         var dataAtual = DateTime.UtcNow;
 
+        var responsavelAnterior = tarefa.ResponsavelId;
+
         tarefa.Titulo = tituloNormalizado;
         tarefa.Descricao = descricaoNormalizada;
         tarefa.AtualizarStatus(entrada.Status, dataAtual);
@@ -85,6 +92,17 @@ public sealed class AtualizarTarefaCasoDeUso : IAtualizarTarefaCasoDeUso
 
         repositorioTarefa.Atualizar(tarefa);
         await repositorioTarefa.SalvarAlteracoesAsync(cancellationToken);
+
+        if (responsavelAnterior != tarefa.ResponsavelId)
+        {
+            await notificadorTempoRealTarefas.NotificarAtribuicaoAsync(
+                tarefa.ResponsavelId,
+                tarefa.Id,
+                tarefa.ProjetoId,
+                tarefa.Titulo,
+                reatribuicao: true,
+                cancellationToken);
+        }
 
         return new TarefaResposta
         {
