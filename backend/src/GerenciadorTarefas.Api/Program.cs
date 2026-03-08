@@ -1,6 +1,7 @@
 using GerenciadorTarefas.Api.Configuracoes;
 using GerenciadorTarefas.Api.Hubs;
 using GerenciadorTarefas.Infraestrutura.Persistencia;
+using GerenciadorTarefas.Infraestrutura.Persistencia.Sementes;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -23,11 +24,23 @@ var aplicacao = construtorAplicacao.Build();
 var aplicarMigracoesAutomaticamente = aplicacao.Configuration
     .GetValue<bool>("BancoDados:AplicarMigracoesAutomaticamente");
 
-if (aplicarMigracoesAutomaticamente)
+var aplicarSeedDadosDemonstracao = aplicacao.Configuration
+    .GetValue<bool>("BancoDados:AplicarSeedDadosDemonstracao");
+
+if (aplicarMigracoesAutomaticamente || aplicarSeedDadosDemonstracao)
 {
     using var escopo = aplicacao.Services.CreateScope();
     var contextoBancoDados = escopo.ServiceProvider.GetRequiredService<ContextoBancoDados>();
-    contextoBancoDados.Database.Migrate();
+
+    if (aplicarMigracoesAutomaticamente)
+    {
+        contextoBancoDados.Database.Migrate();
+    }
+
+    if (aplicarSeedDadosDemonstracao)
+    {
+        await SemeadorDadosDemonstracao.AplicarAsync(contextoBancoDados);
+    }
 }
 
 aplicacao.UseSerilogRequestLogging();
