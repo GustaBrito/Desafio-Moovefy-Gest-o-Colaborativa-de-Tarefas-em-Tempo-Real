@@ -8,6 +8,7 @@ public interface IRepositorioTarefa
     Task<ResultadoConsultaTarefas> ListarAsync(
         FiltroConsultaTarefas filtroConsulta,
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<Tarefa>> ListarTodasAsync(CancellationToken cancellationToken = default);
     Task<Tarefa?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> ExistePorProjetoIdAsync(Guid projetoId, CancellationToken cancellationToken = default);
     Task AdicionarAsync(Tarefa tarefa, CancellationToken cancellationToken = default);

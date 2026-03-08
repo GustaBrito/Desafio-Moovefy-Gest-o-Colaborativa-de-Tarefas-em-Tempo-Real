@@ -66,6 +66,13 @@ public sealed class RepositorioTarefa : IRepositorioTarefa
             .FirstOrDefaultAsync(tarefa => tarefa.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<Tarefa>> ListarTodasAsync(CancellationToken cancellationToken = default)
+    {
+        return await contextoBancoDados.Tarefas
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> ExistePorProjetoIdAsync(Guid projetoId, CancellationToken cancellationToken = default)
     {
         return await contextoBancoDados.Tarefas

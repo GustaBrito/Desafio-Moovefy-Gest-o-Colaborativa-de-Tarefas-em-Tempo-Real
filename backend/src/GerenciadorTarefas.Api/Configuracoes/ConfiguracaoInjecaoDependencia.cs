@@ -1,5 +1,7 @@
+using GerenciadorTarefas.Aplicacao.CasosDeUso.Dashboard;
 using GerenciadorTarefas.Aplicacao.CasosDeUso.Projetos;
 using GerenciadorTarefas.Aplicacao.CasosDeUso.Tarefas;
+using GerenciadorTarefas.Aplicacao.Contratos.Dashboard;
 using GerenciadorTarefas.Aplicacao.Contratos.Projetos;
 using GerenciadorTarefas.Aplicacao.Contratos.Tarefas;
 using GerenciadorTarefas.Dominio.Contratos;
@@ -23,6 +25,7 @@ public static class ConfiguracaoInjecaoDependencia
 
         servicos.AddScoped<IRepositorioProjeto, RepositorioProjeto>();
         servicos.AddScoped<IRepositorioTarefa, RepositorioTarefa>();
+        servicos.AddScoped<IConsultaMetricasDashboardCasoDeUso, ConsultaMetricasDashboardCasoDeUso>();
         servicos.AddScoped<IAtualizarProjetoCasoDeUso, AtualizarProjetoCasoDeUso>();
         servicos.AddScoped<ICriarProjetoCasoDeUso, CriarProjetoCasoDeUso>();
         servicos.AddScoped<IConsultaProjetosCasoDeUso, ConsultaProjetosCasoDeUso>();
