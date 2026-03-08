@@ -12,6 +12,19 @@ export enum PrioridadeTarefa {
   Urgente = 4,
 }
 
+export enum CampoOrdenacaoTarefa {
+  DataCriacao = 1,
+  DataPrazo = 2,
+  Prioridade = 3,
+  Status = 4,
+  Titulo = 5,
+}
+
+export enum DirecaoOrdenacaoTarefa {
+  Ascendente = 1,
+  Descendente = 2,
+}
+
 export interface TarefaResposta {
   id: string;
   titulo: string;
@@ -41,4 +54,20 @@ export interface CriarTarefaRequisicao {
   projetoId: string;
   responsavelId: string;
   dataPrazo: string;
+}
+
+export interface AtualizarStatusTarefaRequisicao {
+  status: StatusTarefa;
+}
+
+export interface FiltroConsultaTarefas {
+  projetoId?: string;
+  status?: StatusTarefa;
+  responsavelId?: string;
+  dataPrazoInicial?: string;
+  dataPrazoFinal?: string;
+  campoOrdenacao?: CampoOrdenacaoTarefa;
+  direcaoOrdenacao?: DirecaoOrdenacaoTarefa;
+  numeroPagina?: number;
+  tamanhoPagina?: number;
 }

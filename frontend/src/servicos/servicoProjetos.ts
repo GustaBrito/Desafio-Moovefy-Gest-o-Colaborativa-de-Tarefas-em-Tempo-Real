@@ -1,4 +1,5 @@
 import type {
+  AtualizarProjetoRequisicao,
   CriarProjetoRequisicao,
   ProjetoResposta,
 } from "../tipos/projetos";
@@ -14,5 +15,21 @@ export async function criarProjeto(
   return requisitarApi<ProjetoResposta>("/api/projetos", {
     method: "POST",
     corpo: requisicao,
+  });
+}
+
+export async function atualizarProjeto(
+  id: string,
+  requisicao: AtualizarProjetoRequisicao
+): Promise<ProjetoResposta> {
+  return requisitarApi<ProjetoResposta>(`/api/projetos/${id}`, {
+    method: "PUT",
+    corpo: requisicao,
+  });
+}
+
+export async function excluirProjeto(id: string): Promise<void> {
+  return requisitarApi<void>(`/api/projetos/${id}`, {
+    method: "DELETE",
   });
 }

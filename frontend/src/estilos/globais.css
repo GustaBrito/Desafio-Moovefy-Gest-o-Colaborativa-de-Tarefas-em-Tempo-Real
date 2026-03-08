@@ -23,7 +23,7 @@ a {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 1.5rem;
+  padding: 1rem;
 }
 
 .layout-autenticado {
@@ -33,11 +33,15 @@ a {
 .menu-principal {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.85rem;
   justify-content: space-between;
-  padding: 0.9rem 1.2rem;
+  flex-wrap: wrap;
+  padding: 0.9rem 1rem;
   border-bottom: 1px solid #cbd5e1;
   background: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .marca-sistema {
@@ -52,7 +56,8 @@ a {
 
 .navegacao-principal {
   display: flex;
-  gap: 0.8rem;
+  gap: 0.55rem;
+  flex-wrap: wrap;
 }
 
 .navegacao-principal a {
@@ -72,10 +77,13 @@ a {
   border-radius: 0.4rem;
   padding: 0.45rem 0.8rem;
   cursor: pointer;
+  font: inherit;
 }
 
 .area-conteudo {
-  padding: 1.25rem;
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 1rem;
 }
 
 .pagina-conteudo {
@@ -101,6 +109,7 @@ a {
 }
 
 .formulario-padrao,
+.cartao-filtros,
 .cartao-listagem,
 .cartao-lista-status,
 .cartao-metrica {
@@ -116,6 +125,30 @@ a {
   gap: 0.45rem;
 }
 
+.cartao-filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.cartao-filtros h3 {
+  margin: 0;
+}
+
+.grade-filtros {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.grade-filtros label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.95rem;
+  color: #334155;
+}
+
 .formulario-padrao h2,
 .formulario-padrao h3 {
   margin: 0 0 0.4rem;
@@ -123,11 +156,15 @@ a {
 
 .formulario-padrao input,
 .formulario-padrao textarea,
-.formulario-padrao select {
+.formulario-padrao select,
+.grade-filtros input,
+.grade-filtros select,
+.acoes-item-tarefa select {
   border: 1px solid #cbd5e1;
   border-radius: 0.4rem;
   padding: 0.55rem 0.65rem;
   font: inherit;
+  width: 100%;
 }
 
 .formulario-padrao button {
@@ -139,10 +176,51 @@ a {
   padding: 0.55rem 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  font: inherit;
 }
 
 .formulario-padrao button:disabled {
   opacity: 0.75;
+  cursor: default;
+}
+
+.linha-botoes-formulario {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.botao-secundario,
+.botao-perigo,
+.botao-texto {
+  border-radius: 0.4rem;
+  border: 1px solid transparent;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.botao-secundario {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.botao-perigo {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.botao-texto {
+  background: transparent;
+  color: #1d4ed8;
+}
+
+.botao-secundario:disabled,
+.botao-perigo:disabled,
+.botao-texto:disabled {
+  opacity: 0.6;
   cursor: default;
 }
 
@@ -161,15 +239,17 @@ a {
   gap: 0.7rem;
 }
 
-.cartao-listagem li {
+.item-listagem,
+.item-tarefa {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.35rem;
   border-bottom: 1px dashed #e2e8f0;
   padding-bottom: 0.6rem;
 }
 
-.cartao-listagem li:last-child {
+.item-listagem:last-child,
+.item-tarefa:last-child {
   border-bottom: 0;
   padding-bottom: 0;
 }
@@ -177,6 +257,99 @@ a {
 .cartao-listagem span {
   color: #64748b;
   font-size: 0.9rem;
+}
+
+.lista-com-acoes .item-listagem {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 0.8rem;
+}
+
+.conteudo-item-listagem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.acoes-item-listagem {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.lista-tarefas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.item-tarefa-atrasada {
+  background: #fff7ed;
+  border-left: 4px solid #fb923c;
+  padding-left: 0.65rem;
+}
+
+.cabecalho-item-tarefa {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.selo-atrasada {
+  background: #fed7aa;
+  color: #9a3412;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.metadados-item-tarefa {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.acoes-item-tarefa {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.acoes-item-tarefa label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #334155;
+  font-size: 0.88rem;
+}
+
+.rodape-listagem {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.65rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.acoes-paginacao {
+  display: flex;
+  gap: 0.4rem;
 }
 
 .painel-dashboard {
@@ -223,4 +396,91 @@ a {
 .cartao-lista-status li:last-child {
   border-bottom: 0;
   padding-bottom: 0;
+}
+
+.pilha-toasts {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  z-index: 30;
+  width: min(320px, calc(100vw - 2rem));
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  border-radius: 0.55rem;
+  border: 1px solid transparent;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  box-shadow: 0 10px 24px -18px #0f172a;
+  background: #ffffff;
+}
+
+.toast-sucesso {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #14532d;
+}
+
+.toast-erro {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+.toast-informacao {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.botao-fechar-toast {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .menu-principal {
+    align-items: flex-start;
+    padding: 0.8rem;
+  }
+
+  .navegacao-principal {
+    width: 100%;
+    order: 3;
+  }
+
+  .botao-logout {
+    margin-left: auto;
+  }
+
+  .lista-com-acoes .item-listagem {
+    grid-template-columns: 1fr;
+  }
+
+  .acoes-item-listagem {
+    justify-content: flex-start;
+  }
+
+  .acoes-item-tarefa {
+    grid-template-columns: 1fr;
+  }
+
+  .pilha-toasts {
+    top: auto;
+    bottom: 1rem;
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+  }
 }

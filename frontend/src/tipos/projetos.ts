@@ -9,3 +9,8 @@ export interface CriarProjetoRequisicao {
   nome: string;
   descricao?: string | null;
 }
+
+export interface AtualizarProjetoRequisicao {
+  nome: string;
+  descricao?: string | null;
+}

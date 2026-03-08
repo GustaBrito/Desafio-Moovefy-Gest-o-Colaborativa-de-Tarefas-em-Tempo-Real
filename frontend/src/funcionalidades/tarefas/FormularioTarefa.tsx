@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -16,7 +17,19 @@ const esquemaFormularioTarefa = z.object({
   prioridade: z.nativeEnum(PrioridadeTarefa),
   projetoId: z.string().uuid("Selecione um projeto valido."),
   responsavelId: z.string().uuid("O responsavel deve possuir um identificador valido."),
-  dataPrazo: z.string().min(1, "A data de prazo deve ser informada."),
+  dataPrazo: z
+    .string()
+    .min(1, "A data de prazo deve ser informada.")
+    .refine(
+      (valor) => {
+        const dataSelecionada = new Date(`${valor}T00:00:00`);
+        const dataAtual = new Date();
+        dataAtual.setHours(0, 0, 0, 0);
+
+        return dataSelecionada >= dataAtual;
+      },
+      "A data de prazo nao pode estar no passado."
+    ),
 });
 
 type DadosFormularioTarefa = z.infer<typeof esquemaFormularioTarefa>;
@@ -38,6 +51,7 @@ export function FormularioTarefa({
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<DadosFormularioTarefa>({
     resolver: zodResolver(esquemaFormularioTarefa),
@@ -51,6 +65,12 @@ export function FormularioTarefa({
     },
   });
 
+  useEffect(() => {
+    if (responsavelIdPadrao.trim().length > 0) {
+      setValue("responsavelId", responsavelIdPadrao);
+    }
+  }, [responsavelIdPadrao, setValue]);
+
   async function enviar(dados: DadosFormularioTarefa): Promise<void> {
     await aoEnviar(dados);
     reset({
@@ -62,6 +82,11 @@ export function FormularioTarefa({
       dataPrazo: "",
     });
   }
+
+  const dataAtual = new Date();
+  const dataMinimaPrazo = `${dataAtual.getFullYear()}-${String(
+    dataAtual.getMonth() + 1
+  ).padStart(2, "0")}-${String(dataAtual.getDate()).padStart(2, "0")}`;
 
   return (
     <form className="formulario-padrao" onSubmit={handleSubmit(enviar)}>
@@ -89,6 +114,11 @@ export function FormularioTarefa({
       {errors.projetoId && (
         <span className="mensagem-erro">{errors.projetoId.message}</span>
       )}
+      {projetos.length === 0 && (
+        <span className="mensagem-erro">
+          Nenhum projeto disponivel. Cadastre um projeto antes de criar tarefas.
+        </span>
+      )}
 
       <label htmlFor="prioridadeTarefa">Prioridade</label>
       <select
@@ -108,12 +138,17 @@ export function FormularioTarefa({
       )}
 
       <label htmlFor="dataPrazoTarefa">Data de prazo</label>
-      <input id="dataPrazoTarefa" type="date" {...register("dataPrazo")} />
+      <input
+        id="dataPrazoTarefa"
+        type="date"
+        min={dataMinimaPrazo}
+        {...register("dataPrazo")}
+      />
       {errors.dataPrazo && (
         <span className="mensagem-erro">{errors.dataPrazo.message}</span>
       )}
 
-      <button type="submit" disabled={emEnvio}>
+      <button type="submit" disabled={emEnvio || projetos.length === 0}>
         {emEnvio ? "Salvando..." : "Salvar tarefa"}
       </button>
     </form>
