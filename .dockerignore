@@ -1,0 +1,16 @@
+.git
+.gitignore
+.github
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.vite
+**/*.log
+**/*.tmp
+**/*.temp
+**/.env
+**/.env.local
+**/.env.*.local
+web_erro.log
+web_saida.log

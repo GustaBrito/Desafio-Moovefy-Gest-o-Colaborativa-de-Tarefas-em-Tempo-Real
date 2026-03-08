@@ -3,18 +3,25 @@ services:
     image: postgres:16-alpine
     container_name: gerenciador-tarefas-banco-compose
     environment:
-      POSTGRES_DB: gerenciador_tarefas_dev
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-gerenciador_tarefas_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "55433:5432"
+      - "${POSTGRES_PORTA_HOST:-55433}:5432"
     volumes:
       - volume_banco_gerenciador_tarefas:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d gerenciador_tarefas_dev"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-gerenciador_tarefas_dev}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 12
+    restart: unless-stopped
+    networks:
+      - rede_gerenciador_tarefas
 
   api:
     build:
@@ -24,14 +31,35 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__BancoDados: Host=banco_dados;Port=5432;Database=gerenciador_tarefas_dev;Username=postgres;Password=postgres
+      ConnectionStrings__BancoDados: Host=banco_dados;Port=5432;Database=${POSTGRES_DB:-gerenciador_tarefas_dev};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       BancoDados__AplicarMigracoesAutomaticamente: "true"
     depends_on:
       banco_dados:
         condition: service_healthy
     ports:
-      - "5258:8080"
+      - "${API_PORTA_HOST:-5258}:8080"
     restart: unless-stopped
+    networks:
+      - rede_gerenciador_tarefas
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_URL_API: ${VITE_URL_API:-http://localhost:5258}
+    container_name: gerenciador-tarefas-frontend-compose
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORTA_HOST:-5173}:80"
+    restart: unless-stopped
+    networks:
+      - rede_gerenciador_tarefas
 
 volumes:
   volume_banco_gerenciador_tarefas:
+
+networks:
+  rede_gerenciador_tarefas:
