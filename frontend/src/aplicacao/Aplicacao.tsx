@@ -1,13 +1,18 @@
-export function Aplicacao() {
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter } from "react-router-dom";
+import { ProvedorAutenticacao } from "../contextos/ContextoAutenticacao";
+import { RotasAplicacao } from "../rotas/RotasAplicacao";
+
+const clienteConsulta = new QueryClient();
+
+export function Aplicacao(): JSX.Element {
   return (
-    <main className="conteudo-principal">
-      <section className="cartao-boas-vindas">
-        <h1>Gerenciador de Tarefas</h1>
-        <p>
-          Ambiente inicial do frontend pronto. Nas proximas etapas serao
-          desenvolvidas as paginas de Projetos, Tarefas e Dashboard.
-        </p>
-      </section>
-    </main>
+    <QueryClientProvider client={clienteConsulta}>
+      <ProvedorAutenticacao>
+        <BrowserRouter>
+          <RotasAplicacao />
+        </BrowserRouter>
+      </ProvedorAutenticacao>
+    </QueryClientProvider>
   );
 }
