@@ -93,7 +93,7 @@ public sealed class ControladorTarefas : ControllerBase
         return Ok(resposta);
     }
 
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}", Name = "obter_tarefa_por_id")]
     [ProducesResponseType(typeof(RespostaSucessoApi<TarefaResposta>), StatusCodes.Status200OK)]
     public async Task<ActionResult<RespostaSucessoApi<TarefaResposta>>> ObterTarefaPorIdAsync(
         Guid id,
@@ -141,7 +141,7 @@ public sealed class ControladorTarefas : ControllerBase
             CodigoRastreio = HttpContext.TraceIdentifier
         };
 
-        return CreatedAtAction(nameof(ObterTarefaPorIdAsync), new { id = tarefaCriada.Id }, resposta);
+        return CreatedAtRoute("obter_tarefa_por_id", new { id = tarefaCriada.Id }, resposta);
     }
 
     [HttpPut("{id:guid}")]

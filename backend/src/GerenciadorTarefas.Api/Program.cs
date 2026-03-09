@@ -55,3 +55,7 @@ aplicacao.MapControllers();
 aplicacao.MapHub<HubNotificacoes>("/hubs/notificacoes");
 
 aplicacao.Run();
+
+public partial class Program
+{
+}

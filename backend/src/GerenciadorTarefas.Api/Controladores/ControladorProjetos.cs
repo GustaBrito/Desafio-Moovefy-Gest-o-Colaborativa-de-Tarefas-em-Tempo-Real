@@ -54,7 +54,7 @@ public sealed class ControladorProjetos : ControllerBase
         return Ok(resposta);
     }
 
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}", Name = "obter_projeto_por_id")]
     [ProducesResponseType(typeof(RespostaSucessoApi<ProjetoResposta>), StatusCodes.Status200OK)]
     public async Task<ActionResult<RespostaSucessoApi<ProjetoResposta>>> ObterProjetoPorIdAsync(
         Guid id,
@@ -98,7 +98,7 @@ public sealed class ControladorProjetos : ControllerBase
             CodigoRastreio = HttpContext.TraceIdentifier
         };
 
-        return CreatedAtAction(nameof(ObterProjetoPorIdAsync), new { id = projetoCriado.Id }, resposta);
+        return CreatedAtRoute("obter_projeto_por_id", new { id = projetoCriado.Id }, resposta);
     }
 
     [HttpPut("{id:guid}")]
