@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: segredo-banco-dados
+  namespace: gerenciador-tarefas
+type: Opaque
+stringData:
+  POSTGRES_DB: gerenciador_tarefas_dev
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres

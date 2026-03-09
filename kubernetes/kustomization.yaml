@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gerenciador-tarefas
+resources:
+  - espaco-nomes.yaml
+  - configmap-api.yaml
+  - segredo-banco-exemplo.yaml
+  - volume-claim-banco-dados.yaml
+  - implantacao-banco-dados.yaml
+  - servico-banco-dados.yaml
+  - implantacao-api.yaml
+  - servico-api.yaml
+  - implantacao-frontend.yaml
+  - servico-frontend.yaml

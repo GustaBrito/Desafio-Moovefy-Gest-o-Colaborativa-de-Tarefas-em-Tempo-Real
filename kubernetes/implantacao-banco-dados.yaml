@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: banco-dados
+  namespace: gerenciador-tarefas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: banco-dados
+  template:
+    metadata:
+      labels:
+        app: banco-dados
+    spec:
+      containers:
+        - name: banco-dados
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: segredo-banco-dados
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: segredo-banco-dados
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: segredo-banco-dados
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: volume-banco-dados
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: volume-banco-dados
+          persistentVolumeClaim:
+            claimName: pvc-banco-dados
