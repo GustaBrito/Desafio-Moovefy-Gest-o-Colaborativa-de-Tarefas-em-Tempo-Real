@@ -12,3 +12,4 @@ resources:
   - servico-api.yaml
   - implantacao-frontend.yaml
   - servico-frontend.yaml
+  - ingress.yaml
