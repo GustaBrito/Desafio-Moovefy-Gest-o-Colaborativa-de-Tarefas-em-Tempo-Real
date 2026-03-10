@@ -39,8 +39,18 @@ jobs:
       - name: Compilar solucao
         run: dotnet build GerenciadorTarefas.sln --configuration Release --no-restore
 
-      - name: Executar testes
-        run: dotnet test GerenciadorTarefas.sln --configuration Release --no-build -m:1 --verbosity minimal
+      - name: Executar testes com cobertura
+        run: |
+          dotnet test tests/GerenciadorTarefas.TestesUnitarios/GerenciadorTarefas.TestesUnitarios.csproj --configuration Release --no-build -m:1 --verbosity minimal --collect:"XPlat Code Coverage" --results-directory ./TestResults
+          dotnet test tests/GerenciadorTarefas.TestesIntegracao/GerenciadorTarefas.TestesIntegracao.csproj --configuration Release --no-build -m:1 --verbosity minimal --collect:"XPlat Code Coverage" --results-directory ./TestResults
+
+      - name: Publicar artefatos de teste e cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/TestResults/**
+          if-no-files-found: warn
 
   frontend:
     name: Frontend - Build
