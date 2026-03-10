@@ -3,6 +3,7 @@ import { BrowserRouter } from "react-router-dom";
 import { ListaNotificacoesToast } from "../componentes/ListaNotificacoesToast";
 import { ProvedorAutenticacao } from "../contextos/ContextoAutenticacao";
 import { ProvedorNotificacao } from "../contextos/ContextoNotificacao";
+import { InicializadorNotificacoesTempoReal } from "../funcionalidades/notificacoes/InicializadorNotificacoesTempoReal";
 import { RotasAplicacao } from "../rotas/RotasAplicacao";
 
 const clienteConsulta = new QueryClient();
@@ -12,6 +13,7 @@ export function Aplicacao(): JSX.Element {
     <QueryClientProvider client={clienteConsulta}>
       <ProvedorAutenticacao>
         <ProvedorNotificacao>
+          <InicializadorNotificacoesTempoReal />
           <BrowserRouter>
             <RotasAplicacao />
           </BrowserRouter>

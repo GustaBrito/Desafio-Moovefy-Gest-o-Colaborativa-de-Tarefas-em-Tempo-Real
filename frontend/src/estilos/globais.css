@@ -281,6 +281,12 @@ a {
   font-size: 0.85rem;
 }
 
+.contador-notificacoes-menu {
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .navegacao-principal {
   display: flex;
   gap: 0.55rem;

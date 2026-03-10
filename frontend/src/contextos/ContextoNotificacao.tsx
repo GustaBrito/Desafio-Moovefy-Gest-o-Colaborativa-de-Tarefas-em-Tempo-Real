@@ -6,6 +6,7 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
+import type { NotificacaoHistoricoResposta } from "../tipos/notificacoes";
 
 const DURACAO_PADRAO_NOTIFICACAO_MS = 4500;
 
@@ -19,10 +20,17 @@ export interface NotificacaoToast {
 
 export interface ValorContextoNotificacao {
   notificacoes: NotificacaoToast[];
+  historicoNotificacoes: NotificacaoHistoricoResposta[];
   mostrarSucesso: (mensagem: string) => void;
   mostrarErro: (mensagem: string) => void;
   mostrarInformacao: (mensagem: string) => void;
   removerNotificacao: (id: number) => void;
+  definirHistoricoNotificacoes: (
+    notificacoes: NotificacaoHistoricoResposta[]
+  ) => void;
+  adicionarNotificacaoHistorico: (
+    notificacao: NotificacaoHistoricoResposta
+  ) => void;
 }
 
 export const ContextoNotificacao = createContext<ValorContextoNotificacao | null>(
@@ -33,6 +41,9 @@ export function ProvedorNotificacao({
   children,
 }: PropsWithChildren): JSX.Element {
   const [notificacoes, setNotificacoes] = useState<NotificacaoToast[]>([]);
+  const [historicoNotificacoes, setHistoricoNotificacoes] = useState<
+    NotificacaoHistoricoResposta[]
+  >([]);
   const contadorId = useRef(1);
 
   const removerNotificacao = useCallback((id: number) => {
@@ -87,20 +98,60 @@ export function ProvedorNotificacao({
     [adicionarNotificacao]
   );
 
+  const definirHistoricoNotificacoes = useCallback(
+    (notificacoesHistorico: NotificacaoHistoricoResposta[]) => {
+      const ordenadas = [...notificacoesHistorico].sort(
+        (notificacaoAtual, proximaNotificacao) =>
+          new Date(proximaNotificacao.dataCriacao).getTime() -
+          new Date(notificacaoAtual.dataCriacao).getTime()
+      );
+
+      setHistoricoNotificacoes(ordenadas);
+    },
+    []
+  );
+
+  const adicionarNotificacaoHistorico = useCallback(
+    (notificacao: NotificacaoHistoricoResposta) => {
+      setHistoricoNotificacoes((notificacoesAtuais) => {
+        if (notificacoesAtuais.some((item) => item.id === notificacao.id)) {
+          return notificacoesAtuais;
+        }
+
+        const proximasNotificacoes = [notificacao, ...notificacoesAtuais]
+          .sort(
+            (notificacaoAtual, proximaNotificacao) =>
+              new Date(proximaNotificacao.dataCriacao).getTime() -
+              new Date(notificacaoAtual.dataCriacao).getTime()
+          )
+          .slice(0, 50);
+
+        return proximasNotificacoes;
+      });
+    },
+    []
+  );
+
   const valorContexto = useMemo<ValorContextoNotificacao>(
     () => ({
       notificacoes,
+      historicoNotificacoes,
       mostrarSucesso,
       mostrarErro,
       mostrarInformacao,
       removerNotificacao,
+      definirHistoricoNotificacoes,
+      adicionarNotificacaoHistorico,
     }),
     [
       notificacoes,
+      historicoNotificacoes,
       mostrarSucesso,
       mostrarErro,
       mostrarInformacao,
       removerNotificacao,
+      definirHistoricoNotificacoes,
+      adicionarNotificacaoHistorico,
     ]
   );
 
