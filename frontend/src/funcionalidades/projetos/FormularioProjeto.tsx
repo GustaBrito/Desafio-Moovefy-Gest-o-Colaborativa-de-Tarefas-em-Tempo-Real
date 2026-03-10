@@ -50,11 +50,15 @@ export function FormularioProjeto({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<DadosFormularioProjeto>({
     resolver: zodResolver(esquemaFormularioProjeto),
     defaultValues: valoresPadraoFormulario,
   });
+
+  const descricaoDigitada = watch("descricao");
+  const quantidadeCaracteresDescricao = descricaoDigitada?.length ?? 0;
 
   useEffect(() => {
     reset(valoresPadraoFormulario);
@@ -73,14 +77,31 @@ export function FormularioProjeto({
 
   return (
     <form className="formulario-padrao" onSubmit={handleSubmit(enviar)}>
-      <h3>{titulo}</h3>
+      <div className="cabecalho-formulario-projeto">
+        <h3>{titulo}</h3>
+        <p>Mantenha nomes objetivos para facilitar busca e rastreabilidade.</p>
+      </div>
 
       <label htmlFor="nomeProjeto">Nome</label>
-      <input id="nomeProjeto" type="text" {...register("nome")} />
+      <input
+        id="nomeProjeto"
+        type="text"
+        maxLength={150}
+        placeholder="Ex.: Implantacao do modulo financeiro"
+        autoFocus={!valoresIniciais}
+        {...register("nome")}
+      />
       {errors.nome && <span className="mensagem-erro">{errors.nome.message}</span>}
 
       <label htmlFor="descricaoProjeto">Descricao</label>
-      <textarea id="descricaoProjeto" rows={3} {...register("descricao")} />
+      <textarea
+        id="descricaoProjeto"
+        rows={4}
+        maxLength={1000}
+        placeholder="Contexto, objetivo e informacoes relevantes para a equipe."
+        {...register("descricao")}
+      />
+      <span className="contador-caracteres">{quantidadeCaracteresDescricao}/1000</span>
       {errors.descricao && (
         <span className="mensagem-erro">{errors.descricao.message}</span>
       )}

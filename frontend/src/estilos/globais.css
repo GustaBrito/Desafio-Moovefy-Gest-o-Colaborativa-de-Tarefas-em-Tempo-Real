@@ -579,6 +579,616 @@ a {
   gap: 0.4rem;
 }
 
+.pagina-projetos {
+  gap: 1.1rem;
+}
+
+.cabecalho-projetos {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.acoes-cabecalho-projetos {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rotulo-atualizacao-projetos {
+  margin: 0;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.grade-resumo-projetos {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.cartao-resumo-projeto {
+  border: 1px solid #dbe3ef;
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  padding: 0.9rem;
+}
+
+.cartao-resumo-projeto h3 {
+  margin: 0;
+  color: #475569;
+  font-size: 0.88rem;
+}
+
+.cartao-resumo-projeto strong {
+  margin-top: 0.4rem;
+  display: block;
+  font-size: 1.2rem;
+}
+
+.cartao-resumo-projeto span {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.painel-filtros-projetos {
+  gap: 0.8rem;
+}
+
+.grade-filtros-projetos {
+  grid-template-columns: 2fr minmax(200px, 1fr);
+}
+
+.opcao-filtro-projeto {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.opcao-filtro-projeto input {
+  width: 1rem;
+  height: 1rem;
+}
+
+.grade-projetos-principal {
+  align-items: start;
+}
+
+.cabecalho-formulario-projeto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cabecalho-formulario-projeto p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.83rem;
+}
+
+.contador-caracteres {
+  display: block;
+  margin-top: -0.2rem;
+  color: #64748b;
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.cartao-listagem-projetos {
+  gap: 0.8rem;
+}
+
+.cabecalho-listagem-projetos {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 0.2rem;
+}
+
+.cabecalho-listagem-projetos h3 {
+  margin: 0;
+}
+
+.cabecalho-listagem-projetos span {
+  font-size: 0.84rem;
+  color: #475569;
+}
+
+.item-listagem-projeto {
+  padding: 0.6rem 0.65rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.7rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.item-listagem-projeto-edicao {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px #dbeafe;
+}
+
+.topo-item-projeto {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selo-sucesso-projeto,
+.selo-alerta-projeto {
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.selo-sucesso-projeto {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.selo-alerta-projeto {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.conteudo-item-listagem small {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.lista-esqueleto-projetos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.bloco-esqueleto-linha-projeto {
+  height: 88px;
+}
+
+.estado-vazio-projetos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.estado-vazio-projetos p {
+  margin: 0;
+}
+
+.estado-vazio-projetos span {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.pagina-tarefas {
+  gap: 1.1rem;
+}
+
+.cabecalho-tarefas {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.acoes-cabecalho-tarefas {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.grade-resumo-tarefas {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.cartao-resumo-tarefa {
+  border: 1px solid #dbe3ef;
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  padding: 0.9rem;
+}
+
+.cartao-resumo-tarefa h3 {
+  margin: 0;
+  color: #475569;
+  font-size: 0.88rem;
+}
+
+.cartao-resumo-tarefa strong {
+  margin-top: 0.4rem;
+  display: block;
+  font-size: 1.2rem;
+}
+
+.cartao-resumo-tarefa span {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.painel-filtros-tarefas {
+  gap: 0.8rem;
+}
+
+.cabecalho-painel-filtros-tarefas {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cabecalho-painel-filtros-tarefas h3 {
+  margin: 0;
+}
+
+.acoes-salvar-filtros-tarefas {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.grade-filtros-tarefas {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.linha-chips-tarefas {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.chip-filtro-tarefa {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #1e293b;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.chip-filtro-tarefa-ativo {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.acoes-rapidas-filtros-tarefas {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.atalhos-tarefas {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.grade-tarefas-principal {
+  align-items: start;
+}
+
+.cartao-listagem-tarefas-modernizado {
+  gap: 0.8rem;
+}
+
+.cabecalho-listagem-tarefas {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.cabecalho-listagem-tarefas h3 {
+  margin: 0;
+}
+
+.acoes-cabecalho-listagem-tarefas {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.acoes-cabecalho-listagem-tarefas span {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.alternador-visualizacao-tarefas {
+  display: flex;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.alternador-visualizacao-tarefas button {
+  border: 0;
+  background: #f8fafc;
+  color: #334155;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.alternador-visualizacao-tarefas button.ativo {
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.painel-acoes-lote-tarefas {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: 0.65rem;
+  border-radius: 0.6rem;
+  border: 1px solid #dbe3ef;
+  background: #f8fbff;
+}
+
+.painel-acoes-lote-tarefas label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.88rem;
+  color: #334155;
+}
+
+.painel-acoes-lote-tarefas select {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.4rem;
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+  min-width: 170px;
+}
+
+.painel-acoes-lote-tarefas span {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.rotulo-atualizacao-tarefas {
+  margin: 0;
+  color: #475569;
+  font-size: 0.84rem;
+}
+
+.lista-esqueleto-tarefas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.bloco-esqueleto-linha-tarefa {
+  height: 76px;
+}
+
+.container-tabela-tarefas {
+  overflow-x: auto;
+}
+
+.tabela-tarefas {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 760px;
+}
+
+.tabela-tarefas th,
+.tabela-tarefas td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.6rem 0.45rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tabela-tarefas th {
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.botao-ordenacao-coluna {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.linha-tarefa-atrasada {
+  background: #fff7ed;
+}
+
+.coluna-titulo-tarefa {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.coluna-titulo-tarefa span {
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.selo-prioridade,
+.selo-status {
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.selo-prioridade-1 {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.selo-prioridade-2 {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.selo-prioridade-3 {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.selo-prioridade-4 {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.coluna-prazo-tarefa {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.indicador-prazo-atrasado {
+  color: #b91c1c;
+  font-size: 0.78rem;
+}
+
+.indicador-prazo-proximo {
+  color: #b45309;
+  font-size: 0.78rem;
+}
+
+.indicador-prazo-alerta {
+  color: #92400e;
+  font-size: 0.78rem;
+}
+
+.coluna-status-tarefa {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.coluna-status-tarefa select {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+}
+
+.selo-status-1 {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.selo-status-2 {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.selo-status-3 {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.selo-status-4 {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.quadro-kanban-tarefas {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.coluna-kanban-tarefas {
+  border: 1px solid #dbe3ef;
+  border-radius: 0.7rem;
+  background: #f8fbff;
+  padding: 0.65rem;
+}
+
+.coluna-kanban-tarefas header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.55rem;
+}
+
+.coluna-kanban-tarefas h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.coluna-kanban-tarefas header span {
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.coluna-kanban-tarefas ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.coluna-kanban-tarefas li {
+  border: 1px solid #dbe3ef;
+  border-radius: 0.6rem;
+  background: #ffffff;
+  padding: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.topo-cartao-kanban {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.coluna-kanban-tarefas li span {
+  color: #475569;
+  font-size: 0.82rem;
+}
+
+.coluna-kanban-tarefas li small {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.rodape-cartao-kanban {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cartao-tarefa-atrasada {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
 .painel-dashboard {
   display: flex;
   flex-direction: column;
@@ -902,6 +1512,83 @@ a {
 
   .lista-com-acoes .item-listagem {
     grid-template-columns: 1fr;
+  }
+
+  .cabecalho-projetos {
+    align-items: flex-start;
+  }
+
+  .acoes-cabecalho-projetos {
+    width: 100%;
+  }
+
+  .acoes-cabecalho-projetos button {
+    width: 100%;
+  }
+
+  .grade-filtros-projetos {
+    grid-template-columns: 1fr;
+  }
+
+  .topo-item-projeto {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cabecalho-tarefas {
+    align-items: flex-start;
+  }
+
+  .acoes-cabecalho-tarefas {
+    width: 100%;
+  }
+
+  .acoes-cabecalho-tarefas button {
+    width: 100%;
+  }
+
+  .cabecalho-painel-filtros-tarefas {
+    flex-direction: column;
+  }
+
+  .acoes-salvar-filtros-tarefas {
+    width: 100%;
+  }
+
+  .acoes-salvar-filtros-tarefas button {
+    width: 100%;
+  }
+
+  .acoes-rapidas-filtros-tarefas button {
+    width: 100%;
+  }
+
+  .acoes-cabecalho-listagem-tarefas {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .alternador-visualizacao-tarefas {
+    width: 100%;
+  }
+
+  .alternador-visualizacao-tarefas button {
+    flex: 1;
+  }
+
+  .painel-acoes-lote-tarefas {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .painel-acoes-lote-tarefas label,
+  .painel-acoes-lote-tarefas select {
+    width: 100%;
+  }
+
+  .painel-acoes-lote-tarefas button {
+    width: 100%;
   }
 
   .cabecalho-dashboard {
