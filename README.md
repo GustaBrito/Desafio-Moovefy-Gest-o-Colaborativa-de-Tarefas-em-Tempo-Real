@@ -27,7 +27,8 @@ O foco da implementação foi manter arquitetura profissional, regras de negóci
 - TanStack Query
 - React Hook Form
 - Zod
-- Tailwind CSS
+- SignalR Client (`@microsoft/signalr`)
+- CSS global customizado
 - Recharts
 
 ### Testes
@@ -43,12 +44,12 @@ O foco da implementação foi manter arquitetura profissional, regras de negóci
 
 ## Funcionalidades Entregues
 - CRUD completo de projetos
-- CRUD completo de tarefas
+- CRUD completo de tarefas (incluindo edicao e atualizacao de status)
 - filtros, ordenação e paginação de tarefas
 - dashboard com métricas
 - autenticação e autorização com JWT
-- notificações em tempo real ao atribuir ou reatribuir tarefa
-- histórico simples de notificações
+- notificações em tempo real ao atribuir ou reatribuir tarefa (SignalR)
+- histórico de notificações integrado no frontend
 - cache em endpoints de consulta
 - rate limiting global e específico no login
 - padronização de respostas e erros da API
@@ -65,7 +66,7 @@ docker compose --env-file .env.compose.example up -d --build
 ### URLs principais
 - Frontend: `http://localhost:5173`
 - API: `http://localhost:5258`
-- Swagger: `http://localhost:5258/swagger`
+- Swagger: `http://localhost:5258/documentacao`
 
 ### Encerrar ambiente
 ```bash
@@ -114,6 +115,9 @@ Copy-Item .env.example .env
 - PostgreSQL no container/cluster: `5432`
 
 ## Credenciais Padrão
+Credenciais de demonstracao para ambiente `Development`/testes.
+Em execucao de producao, configure usuarios JWT por variavel de ambiente.
+
 - Administrador
   - Email: `admin@gerenciadortarefas.local`
   - Senha: `Admin@123`
@@ -146,12 +150,26 @@ dotnet test backend/tests/GerenciadorTarefas.TestesUnitarios/GerenciadorTarefas.
 dotnet test backend/tests/GerenciadorTarefas.TestesIntegracao/GerenciadorTarefas.TestesIntegracao.csproj -m:1 -v minimal
 ```
 
+### Cobertura de testes (linha de base atual)
+```bash
+dotnet test backend/GerenciadorTarefas.sln -m:1 -v minimal --collect:"XPlat Code Coverage" --results-directory backend/TestResults
+```
+
+Resultado atual (execucao local em 10/03/2026):
+- cobertura agregada de linhas: `67,78%`
+- linhas cobertas: `2255`
+- linhas validas: `3327`
+
 ## CI/CD
-- Workflow em `.github/workflows/ci.yml`
-- Executa em `push` e `pull_request` para `main`
-- Etapas:
-  - backend: restore, build e test
+- CI em `.github/workflows/ci.yml`
+  - executa em `push` e `pull_request` para `main`
+  - backend: restore, build, testes unitarios/integracao e coleta de cobertura
   - frontend: install e build
+  - upload de artefatos de teste/cobertura
+- CD em `.github/workflows/cd.yml`
+  - executa em `push` para `main` e em `workflow_dispatch`
+  - build e push das imagens Docker da API e do frontend no GHCR
+  - tags publicadas: `latest` e `${GITHUB_SHA}`
 
 ## Kubernetes
 Manifests básicos em `kubernetes/`:
@@ -162,6 +180,7 @@ Manifests básicos em `kubernetes/`:
 - deployment/service de banco
 - deployment/service de API
 - deployment/service de frontend
+- ingress HTTP com rotas para frontend (`/`) e API (`/api`, `/hubs`)
 
 Observação: as imagens nos manifests são placeholders e devem ser substituídas pelas imagens publicadas do projeto.
 
@@ -187,7 +206,7 @@ Resumo:
 ## Trade-offs
 - Arquitetura limpa, porém sem overengineering (sem Unit of Work dedicado)
 - Autenticação com usuários de demonstração em configuração para simplificar ambiente local
-- Kubernetes básico para demonstração, sem ingress/HPA/observabilidade de cluster nesta fase
+- Kubernetes em nível essencial (sem HPA e sem observabilidade de cluster nesta fase)
 
 ## Uso de IA no Desenvolvimento
 A IA foi usada como apoio técnico para:
@@ -203,7 +222,7 @@ Todo código gerado foi revisado, testado e ajustado manualmente antes de aceita
 - rotação de segredos com secret manager
 - testes E2E no frontend
 - políticas RBAC mais granulares
-- ingress e autoscaling no Kubernetes
+- autoscaling e políticas de disponibilidade no Kubernetes
 
 ## Estrutura do Projeto
 ```text

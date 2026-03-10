@@ -117,16 +117,17 @@ Padrões de UI:
 - documentação OpenAPI/Swagger
 - testes unitários para regras de negócio prioritárias
 - testes de integração para endpoints críticos
-- workflow de CI para build e testes de backend e frontend
+- workflow de CI para build/testes de backend e frontend
+- workflow de CD para build/publish de imagens Docker no GHCR
 
 ## 9. Deploy e Operação
 - Docker Compose para ambiente local integrado
-- manifests Kubernetes básicos para namespace, banco, API e frontend
+- manifests Kubernetes para namespace, banco, API, frontend e ingress HTTP
 - `ConfigMap` e `Secret` para configuração de runtime no cluster
 
 ## 10. Evolução Recomendada
-- separar pipelines de CI e CD por ambiente
+- adicionar deploy automatizado por ambiente usando as imagens publicadas
 - adicionar tracing distribuído
 - adotar secret manager
 - incluir testes E2E no frontend
-- incluir ingress, HPA e probes refinadas no Kubernetes
+- incluir HPA, probes refinadas e políticas de disponibilidade no Kubernetes

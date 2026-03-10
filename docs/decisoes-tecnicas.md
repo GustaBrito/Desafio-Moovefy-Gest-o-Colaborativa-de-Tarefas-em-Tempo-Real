@@ -109,26 +109,28 @@ Motivo:
 Impacto:
 - menor custo de entrada para execução do projeto
 
-## 11. Decisão: Pipeline de CI no GitHub Actions
+## 11. Decisão: Pipeline de CI/CD no GitHub Actions
 Decisão:
-- workflow com build e testes do backend + build do frontend
+- workflow de CI com build/testes backend + build frontend
+- workflow de CD para publicar imagens Docker no GHCR
 
 Motivo:
-- validar saúde básica da entrega a cada push/PR
+- validar saúde da entrega e manter artefatos versionados para deploy
 
 Impacto:
 - redução de regressões antes de merge
+- disponibilidade de imagens prontas para ambientes de homologação/produção
 
-## 12. Decisão: Kubernetes Básico para Prontidão de Deploy
+## 12. Decisão: Kubernetes Essencial para Prontidão de Deploy
 Decisão:
-- adicionar manifests de namespace, deployments, services, configmap, secret de exemplo e pvc
+- adicionar manifests de namespace, deployments, services, ingress, configmap, secret de exemplo e pvc
 
 Motivo:
 - demonstrar preparação para execução em cluster
 
 Impacto:
 - base de deploy criada
-- ainda sem ingress, autoscaling e políticas avançadas
+- ainda sem autoscaling e políticas avançadas
 
 ## 13. Trade-offs Assumidos
 - autenticação simplificada por configuração em vez de identidade corporativa
