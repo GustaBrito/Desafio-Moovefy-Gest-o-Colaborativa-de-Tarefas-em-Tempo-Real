@@ -38,6 +38,16 @@ internal static class ClienteApiTeste
         cliente.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
+    public static async Task ConfigurarAutorizacaoAsync(
+        HttpClient cliente,
+        string email,
+        string senha)
+    {
+        var token = await ObterTokenAsync(cliente, email, senha);
+
+        cliente.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+
     public static async Task<EnvelopeSucessoRespostaTeste<TDados>> LerEnvelopeSucessoAsync<TDados>(
         HttpResponseMessage resposta)
     {

@@ -1,6 +1,7 @@
 using GerenciadorTarefas.Aplicacao.Contratos.Notificacoes;
 using GerenciadorTarefas.Aplicacao.Modelos.Notificacoes;
 using GerenciadorTarefas.Api.Contratos.Respostas;
+using GerenciadorTarefas.Api.Seguranca;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,9 +26,27 @@ public sealed class ControladorNotificacoes : ControllerBase
         [FromQuery] int limite = 50,
         CancellationToken cancellationToken = default)
     {
+        if (!User.TentarObterUsuarioId(out var usuarioIdAutenticado))
+        {
+            throw new UnauthorizedAccessException("Nao foi possivel identificar o usuario autenticado.");
+        }
+
+        var usuarioAdministrador = User.PossuiPerfilAdministrador();
+        var responsavelConsulta = responsavelId;
+
+        if (!usuarioAdministrador)
+        {
+            if (responsavelId.HasValue && responsavelId.Value != usuarioIdAutenticado)
+            {
+                return Forbid();
+            }
+
+            responsavelConsulta = usuarioIdAutenticado;
+        }
+
         var entrada = new ConsultaHistoricoNotificacoesEntrada
         {
-            ResponsavelId = responsavelId,
+            ResponsavelId = responsavelConsulta,
             Limite = limite
         };
 

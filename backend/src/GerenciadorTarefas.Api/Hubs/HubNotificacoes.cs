@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using GerenciadorTarefas.Api.Seguranca;
 
 namespace GerenciadorTarefas.Api.Hubs;
 
@@ -13,6 +14,17 @@ public sealed class HubNotificacoes : Hub
             return;
         }
 
+        if (!Context.User.TentarObterUsuarioId(out var usuarioIdAutenticado))
+        {
+            throw new HubException("Nao foi possivel identificar o usuario autenticado.");
+        }
+
+        var usuarioAdministrador = Context.User.PossuiPerfilAdministrador();
+        if (!usuarioAdministrador && usuarioIdAutenticado != responsavelId)
+        {
+            throw new HubException("Nao e permitido acessar o canal de outro responsavel.");
+        }
+
         await Groups.AddToGroupAsync(
             Context.ConnectionId,
             ObterNomeCanalResponsavel(responsavelId));
@@ -23,6 +35,17 @@ public sealed class HubNotificacoes : Hub
         if (responsavelId == Guid.Empty)
         {
             return;
+        }
+
+        if (!Context.User.TentarObterUsuarioId(out var usuarioIdAutenticado))
+        {
+            throw new HubException("Nao foi possivel identificar o usuario autenticado.");
+        }
+
+        var usuarioAdministrador = Context.User.PossuiPerfilAdministrador();
+        if (!usuarioAdministrador && usuarioIdAutenticado != responsavelId)
+        {
+            throw new HubException("Nao e permitido acessar o canal de outro responsavel.");
         }
 
         await Groups.RemoveFromGroupAsync(
