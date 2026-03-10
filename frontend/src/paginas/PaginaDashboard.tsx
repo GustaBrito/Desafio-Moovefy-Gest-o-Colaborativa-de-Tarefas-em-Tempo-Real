@@ -12,7 +12,7 @@ import {
 import { usarNotificacao } from "../ganchos/usarNotificacao";
 import { obterMetricasDashboard } from "../servicos/servicoDashboard";
 import { listarProjetos } from "../servicos/servicoProjetos";
-import { listarTarefas } from "../servicos/servicoTarefas";
+import { listarTodasTarefas } from "../servicos/servicoTarefas";
 import type { ProjetoResposta } from "../tipos/projetos";
 import { PrioridadeTarefa, StatusTarefa, type TarefaResposta } from "../tipos/tarefas";
 
@@ -82,15 +82,13 @@ export function PaginaDashboard(): JSX.Element {
   const consultaTarefas = useQuery({
     queryKey: ["dashboard", "tarefas", projetoSelecionado],
     queryFn: () =>
-      listarTarefas({
+      listarTodasTarefas({
         projetoId: projetoSelecionado || undefined,
-        numeroPagina: 1,
-        tamanhoPagina: 200,
       }),
     refetchInterval: atualizacaoAutomatica ? 30000 : false,
   });
 
-  const tarefasBase = consultaTarefas.data?.itens ?? [];
+  const tarefasBase = consultaTarefas.data ?? [];
   const tarefasPeriodo = filtrarPorPeriodo(tarefasBase, periodoSelecionado);
 
   const metricasPeriodo = useMemo(
@@ -98,17 +96,41 @@ export function PaginaDashboard(): JSX.Element {
     [tarefasPeriodo]
   );
 
+  const totaisStatusApi = useMemo(() => {
+    if (projetoSelecionado || !consultaMetricas.data) {
+      return null;
+    }
+
+    const totalPorStatusApi = new Map<StatusTarefa, number>(
+      consultaMetricas.data.totalTarefasPorStatus.map((item) => [item.status, item.total])
+    );
+
+    return Object.values(StatusTarefa)
+      .filter((valor): valor is StatusTarefa => typeof valor === "number")
+      .map((status) => ({
+        status,
+        rotulo: nomesStatus[status],
+        total: totalPorStatusApi.get(status) ?? 0,
+        cor: coresStatus[status],
+      }));
+  }, [consultaMetricas.data, projetoSelecionado]);
+
   const totaisStatus = useMemo<TotalStatusDashboard[]>(
-    () =>
-      Object.values(StatusTarefa)
+    () => {
+      if (totaisStatusApi) {
+        return totaisStatusApi;
+      }
+
+      return Object.values(StatusTarefa)
         .filter((valor): valor is StatusTarefa => typeof valor === "number")
         .map((status) => ({
           status,
           rotulo: nomesStatus[status],
           total: metricasPeriodo.totalPorStatus.get(status) ?? 0,
           cor: coresStatus[status],
-        })),
-    [metricasPeriodo.totalPorStatus]
+        }));
+    },
+    [metricasPeriodo.totalPorStatus, totaisStatusApi]
   );
 
   const totaisPrioridade = useMemo<TotalPrioridadeDashboard[]>(
