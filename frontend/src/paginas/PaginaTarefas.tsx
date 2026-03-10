@@ -7,6 +7,7 @@ import { usarAutenticacao } from "../ganchos/usarAutenticacao";
 import { usarNotificacao } from "../ganchos/usarNotificacao";
 import { listarProjetos } from "../servicos/servicoProjetos";
 import {
+  atualizarTarefa,
   atualizarStatusTarefa,
   criarTarefa,
   excluirTarefa,
@@ -21,7 +22,7 @@ import {
 } from "../tipos/tarefas";
 
 type VisualizacaoTarefas = "lista" | "quadro";
-type ChipRapidoTarefas = "atrasadas" | "vence_hoje" | "sem_responsavel" | "urgentes";
+type ChipRapidoTarefas = "atrasadas" | "vence_hoje" | "urgentes";
 
 interface FiltrosTarefasPersistidos {
   projetoIdFiltro: string;
@@ -69,14 +70,14 @@ const nomesDirecaoOrdenacao: Record<DirecaoOrdenacaoTarefa, string> = {
 const opcoesChipsRapidos: Array<{ id: ChipRapidoTarefas; rotulo: string }> = [
   { id: "atrasadas", rotulo: "Atrasadas" },
   { id: "vence_hoje", rotulo: "Vence hoje" },
-  { id: "sem_responsavel", rotulo: "Sem responsavel" },
   { id: "urgentes", rotulo: "Urgentes" },
 ];
 
 export function PaginaTarefas(): JSX.Element {
   const clienteConsulta = useQueryClient();
   const { sessao } = usarAutenticacao();
-  const { mostrarErro, mostrarInformacao, mostrarSucesso } = usarNotificacao();
+  const { historicoNotificacoes, mostrarErro, mostrarInformacao, mostrarSucesso } =
+    usarNotificacao();
 
   const filtrosIniciais = useRef<FiltrosTarefasPersistidos | null>(
     lerFiltrosPersistidosTarefas()
@@ -122,6 +123,7 @@ export function PaginaTarefas(): JSX.Element {
   );
   const [idsSelecionados, setIdsSelecionados] = useState<string[]>([]);
   const [statusLote, setStatusLote] = useState("");
+  const [tarefaEmEdicao, setTarefaEmEdicao] = useState<TarefaResposta | null>(null);
   const [executandoAcaoLote, setExecutandoAcaoLote] = useState(false);
   const [momentoUltimaSincronizacao, setMomentoUltimaSincronizacao] =
     useState<Date | null>(null);
@@ -196,6 +198,21 @@ export function PaginaTarefas(): JSX.Element {
     },
   });
 
+  const mutacaoAtualizarTarefa = useMutation({
+    mutationFn: ({ id, dados }: { id: string; dados: Parameters<typeof atualizarTarefa>[1] }) =>
+      atualizarTarefa(id, dados),
+    onSuccess: async () => {
+      await Promise.all([
+        clienteConsulta.invalidateQueries({ queryKey: ["tarefas"] }),
+        clienteConsulta.invalidateQueries({ queryKey: ["dashboard"] }),
+      ]);
+      mostrarSucesso("Tarefa atualizada com sucesso.");
+    },
+    onError: (excecao) => {
+      mostrarErro(obterMensagemErro(excecao, "Falha ao atualizar tarefa."));
+    },
+  });
+
   const mutacaoExcluirTarefa = useMutation({
     mutationFn: excluirTarefa,
     onSuccess: async () => {
@@ -238,13 +255,6 @@ export function PaginaTarefas(): JSX.Element {
       }
 
       if (chipsAtivos.includes("vence_hoje") && !tarefaVenceHoje(tarefa)) {
-        return false;
-      }
-
-      if (
-        chipsAtivos.includes("sem_responsavel") &&
-        tarefa.responsavelId.trim().length > 0
-      ) {
         return false;
       }
 
@@ -465,6 +475,7 @@ export function PaginaTarefas(): JSX.Element {
     setChipsAtivos([]);
     setIdsSelecionados([]);
     setStatusLote("");
+    setTarefaEmEdicao(null);
   }
 
   function aplicarMinhaVisao(): void {
@@ -530,6 +541,14 @@ export function PaginaTarefas(): JSX.Element {
     }
 
     await mutacaoExcluirTarefa.mutateAsync(tarefa.id);
+
+    if (tarefaEmEdicao?.id === tarefa.id) {
+      setTarefaEmEdicao(null);
+    }
+  }
+
+  function iniciarEdicaoTarefa(tarefa: TarefaResposta): void {
+    setTarefaEmEdicao(tarefa);
   }
 
   function alternarSelecaoTarefa(id: string): void {
@@ -730,6 +749,26 @@ export function PaginaTarefas(): JSX.Element {
         ))}
       </section>
 
+      {historicoNotificacoes.length > 0 && (
+        <article className="cartao-listagem">
+          <header className="cabecalho-listagem-projetos">
+            <h3>Notificacoes recentes</h3>
+            <span>{Math.min(historicoNotificacoes.length, 5)} exibidas</span>
+          </header>
+          <ul className="lista-com-acoes">
+            {historicoNotificacoes.slice(0, 5).map((notificacao) => (
+              <li className="item-listagem" key={notificacao.id}>
+                <div className="conteudo-item-listagem">
+                  <strong>{notificacao.tituloTarefa}</strong>
+                  <span>{notificacao.mensagem}</span>
+                  <small>{new Date(notificacao.dataCriacao).toLocaleString("pt-BR")}</small>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </article>
+      )}
+
       <article className="cartao-filtros painel-filtros-tarefas">
         <header className="cabecalho-painel-filtros-tarefas">
           <h3>Filtros e ordenacao</h3>
@@ -865,8 +904,43 @@ export function PaginaTarefas(): JSX.Element {
         <FormularioTarefa
           projetos={consultaProjetos.data ?? []}
           responsavelIdPadrao={sessao?.usuarioId ?? ""}
-          emEnvio={mutacaoCriarTarefa.isPending}
+          emEnvio={mutacaoCriarTarefa.isPending || mutacaoAtualizarTarefa.isPending}
+          titulo={tarefaEmEdicao ? "Editar tarefa" : "Nova tarefa"}
+          rotuloBotao={tarefaEmEdicao ? "Atualizar tarefa" : "Salvar tarefa"}
+          rotuloBotaoEmEnvio={tarefaEmEdicao ? "Atualizando..." : "Salvando..."}
+          permitirPrazoPassado={Boolean(tarefaEmEdicao)}
+          valoresIniciais={
+            tarefaEmEdicao
+              ? {
+                  titulo: tarefaEmEdicao.titulo,
+                  descricao: tarefaEmEdicao.descricao ?? "",
+                  prioridade: tarefaEmEdicao.prioridade,
+                  projetoId: tarefaEmEdicao.projetoId,
+                  responsavelId: tarefaEmEdicao.responsavelId,
+                  dataPrazo: converterIsoParaDataInput(tarefaEmEdicao.dataPrazo),
+                }
+              : undefined
+          }
+          aoCancelarEdicao={
+            tarefaEmEdicao ? () => setTarefaEmEdicao(null) : undefined
+          }
           aoEnviar={async (dados) => {
+            if (tarefaEmEdicao) {
+              await mutacaoAtualizarTarefa.mutateAsync({
+                id: tarefaEmEdicao.id,
+                dados: {
+                  titulo: dados.titulo,
+                  descricao: dados.descricao || null,
+                  status: tarefaEmEdicao.status,
+                  prioridade: dados.prioridade,
+                  responsavelId: dados.responsavelId,
+                  dataPrazo: new Date(`${dados.dataPrazo}T23:59:59Z`).toISOString(),
+                },
+              });
+              setTarefaEmEdicao(null);
+              return;
+            }
+
             await mutacaoCriarTarefa.mutateAsync({
               titulo: dados.titulo,
               descricao: dados.descricao || null,
@@ -972,6 +1046,7 @@ export function PaginaTarefas(): JSX.Element {
                   todasVisiveisSelecionadas={todasVisiveisSelecionadas}
                   mapaProjetos={mapaProjetos}
                   carregandoAtualizacaoStatus={mutacaoAtualizarStatus.isPending}
+                  carregandoEdicao={mutacaoAtualizarTarefa.isPending}
                   carregandoExclusao={mutacaoExcluirTarefa.isPending}
                   campoOrdenacao={campoOrdenacao}
                   direcaoOrdenacao={direcaoOrdenacao}
@@ -981,6 +1056,7 @@ export function PaginaTarefas(): JSX.Element {
                   aoAlterarStatus={(tarefa, novoStatus) =>
                     void alterarStatusDaTarefa(tarefa, novoStatus)
                   }
+                  aoEditar={iniciarEdicaoTarefa}
                   aoExcluir={(tarefa) => void excluirTarefaComConfirmacao(tarefa)}
                   aoOrdenar={alternarOrdenacaoPorCabecalho}
                 />
@@ -1067,6 +1143,11 @@ function converterParaDataInput(data: Date): string {
   return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(
     data.getDate()
   ).padStart(2, "0")}`;
+}
+
+function converterIsoParaDataInput(dataIso: string): string {
+  const data = new Date(dataIso);
+  return converterParaDataInput(data);
 }
 
 function escaparValorCsv(valor: string): string {

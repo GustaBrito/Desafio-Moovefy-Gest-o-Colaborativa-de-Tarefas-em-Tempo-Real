@@ -56,6 +56,15 @@ export interface CriarTarefaRequisicao {
   dataPrazo: string;
 }
 
+export interface AtualizarTarefaRequisicao {
+  titulo: string;
+  descricao?: string | null;
+  status: StatusTarefa;
+  prioridade: PrioridadeTarefa;
+  responsavelId: string;
+  dataPrazo: string;
+}
+
 export interface AtualizarStatusTarefaRequisicao {
   status: StatusTarefa;
 }

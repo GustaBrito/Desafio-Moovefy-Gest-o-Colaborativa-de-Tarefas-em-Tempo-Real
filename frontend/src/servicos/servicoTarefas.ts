@@ -1,4 +1,5 @@
 import type {
+  AtualizarTarefaRequisicao,
   AtualizarStatusTarefaRequisicao,
   CriarTarefaRequisicao,
   FiltroConsultaTarefas,
@@ -23,6 +24,16 @@ export async function criarTarefa(
   });
 }
 
+export async function atualizarTarefa(
+  id: string,
+  requisicao: AtualizarTarefaRequisicao
+): Promise<TarefaResposta> {
+  return requisitarApi<TarefaResposta>(`/api/tarefas/${id}`, {
+    method: "PUT",
+    corpo: requisicao,
+  });
+}
+
 export async function atualizarStatusTarefa(
   id: string,
   requisicao: AtualizarStatusTarefaRequisicao
@@ -37,6 +48,31 @@ export async function excluirTarefa(id: string): Promise<void> {
   return requisitarApi<void>(`/api/tarefas/${id}`, {
     method: "DELETE",
   });
+}
+
+export async function listarTodasTarefas(
+  filtroBase: Omit<FiltroConsultaTarefas, "numeroPagina" | "tamanhoPagina"> = {}
+): Promise<TarefaResposta[]> {
+  const tamanhoPagina = 100;
+  const limitePaginasSeguranca = 200;
+
+  let numeroPagina = 1;
+  let totalPaginas = 1;
+  const tarefas: TarefaResposta[] = [];
+
+  while (numeroPagina <= totalPaginas && numeroPagina <= limitePaginasSeguranca) {
+    const resultado = await listarTarefas({
+      ...filtroBase,
+      numeroPagina,
+      tamanhoPagina,
+    });
+
+    tarefas.push(...resultado.itens);
+    totalPaginas = resultado.totalPaginas;
+    numeroPagina += 1;
+  }
+
+  return tarefas;
 }
 
 function construirSufixoQuery(filtro: FiltroConsultaTarefas): string {

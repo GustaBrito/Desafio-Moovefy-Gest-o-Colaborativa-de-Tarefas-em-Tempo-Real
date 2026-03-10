@@ -1,43 +1,59 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import type { ProjetoResposta } from "../../tipos/projetos";
 import { PrioridadeTarefa } from "../../tipos/tarefas";
 
-const esquemaFormularioTarefa = z.object({
-  titulo: z
-    .string()
-    .min(1, "O titulo da tarefa deve ser informado.")
-    .max(200, "O titulo da tarefa deve ter no maximo 200 caracteres."),
-  descricao: z
-    .string()
-    .max(2000, "A descricao da tarefa deve ter no maximo 2000 caracteres.")
-    .optional(),
-  prioridade: z.nativeEnum(PrioridadeTarefa),
-  projetoId: z.string().uuid("Selecione um projeto valido."),
-  responsavelId: z.string().uuid("O responsavel deve possuir um identificador valido."),
-  dataPrazo: z
-    .string()
-    .min(1, "A data de prazo deve ser informada.")
-    .refine(
-      (valor) => {
-        const dataSelecionada = new Date(`${valor}T00:00:00`);
-        const dataAtual = new Date();
-        dataAtual.setHours(0, 0, 0, 0);
+function criarEsquemaFormularioTarefa(permitirPrazoPassado: boolean) {
+  return z.object({
+    titulo: z
+      .string()
+      .min(1, "O titulo da tarefa deve ser informado.")
+      .max(200, "O titulo da tarefa deve ter no maximo 200 caracteres."),
+    descricao: z
+      .string()
+      .max(2000, "A descricao da tarefa deve ter no maximo 2000 caracteres.")
+      .optional(),
+    prioridade: z.nativeEnum(PrioridadeTarefa),
+    projetoId: z.string().uuid("Selecione um projeto valido."),
+    responsavelId: z
+      .string()
+      .uuid("O responsavel deve possuir um identificador valido."),
+    dataPrazo: z
+      .string()
+      .min(1, "A data de prazo deve ser informada.")
+      .refine(
+        (valor) => {
+          if (permitirPrazoPassado) {
+            return true;
+          }
 
-        return dataSelecionada >= dataAtual;
-      },
-      "A data de prazo nao pode estar no passado."
-    ),
-});
+          const dataSelecionada = new Date(`${valor}T00:00:00`);
+          const dataAtual = new Date();
+          dataAtual.setHours(0, 0, 0, 0);
 
-type DadosFormularioTarefa = z.infer<typeof esquemaFormularioTarefa>;
+          return dataSelecionada >= dataAtual;
+        },
+        "A data de prazo nao pode estar no passado."
+      ),
+  });
+}
+
+const esquemaFormularioCriacaoTarefa = criarEsquemaFormularioTarefa(false);
+
+type DadosFormularioTarefa = z.infer<typeof esquemaFormularioCriacaoTarefa>;
 
 interface PropriedadesFormularioTarefa {
   projetos: ProjetoResposta[];
   responsavelIdPadrao: string;
   emEnvio: boolean;
+  titulo?: string;
+  rotuloBotao?: string;
+  rotuloBotaoEmEnvio?: string;
+  valoresIniciais?: DadosFormularioTarefa;
+  permitirPrazoPassado?: boolean;
+  aoCancelarEdicao?: () => void;
   aoEnviar: (dados: DadosFormularioTarefa) => Promise<void>;
 }
 
@@ -45,8 +61,31 @@ export function FormularioTarefa({
   projetos,
   responsavelIdPadrao,
   emEnvio,
+  titulo = "Nova tarefa",
+  rotuloBotao = "Salvar tarefa",
+  rotuloBotaoEmEnvio = "Salvando...",
+  valoresIniciais,
+  permitirPrazoPassado = false,
+  aoCancelarEdicao,
   aoEnviar,
 }: PropriedadesFormularioTarefa): JSX.Element {
+  const esquemaFormulario = useMemo(
+    () => criarEsquemaFormularioTarefa(permitirPrazoPassado),
+    [permitirPrazoPassado]
+  );
+
+  const valoresPadrao = useMemo<DadosFormularioTarefa>(
+    () => ({
+      titulo: valoresIniciais?.titulo ?? "",
+      descricao: valoresIniciais?.descricao ?? "",
+      prioridade: valoresIniciais?.prioridade ?? PrioridadeTarefa.Media,
+      projetoId: valoresIniciais?.projetoId ?? "",
+      responsavelId: valoresIniciais?.responsavelId ?? responsavelIdPadrao,
+      dataPrazo: valoresIniciais?.dataPrazo ?? "",
+    }),
+    [responsavelIdPadrao, valoresIniciais]
+  );
+
   const {
     register,
     handleSubmit,
@@ -54,33 +93,33 @@ export function FormularioTarefa({
     setValue,
     formState: { errors },
   } = useForm<DadosFormularioTarefa>({
-    resolver: zodResolver(esquemaFormularioTarefa),
-    defaultValues: {
-      titulo: "",
-      descricao: "",
-      prioridade: PrioridadeTarefa.Media,
-      projetoId: "",
-      responsavelId: responsavelIdPadrao,
-      dataPrazo: "",
-    },
+    resolver: zodResolver(esquemaFormulario),
+    defaultValues: valoresPadrao,
   });
 
   useEffect(() => {
-    if (responsavelIdPadrao.trim().length > 0) {
+    if (!valoresIniciais && responsavelIdPadrao.trim().length > 0) {
       setValue("responsavelId", responsavelIdPadrao);
     }
-  }, [responsavelIdPadrao, setValue]);
+  }, [valoresIniciais, responsavelIdPadrao, setValue]);
+
+  useEffect(() => {
+    reset(valoresPadrao);
+  }, [reset, valoresPadrao]);
 
   async function enviar(dados: DadosFormularioTarefa): Promise<void> {
     await aoEnviar(dados);
-    reset({
-      titulo: "",
-      descricao: "",
-      prioridade: PrioridadeTarefa.Media,
-      projetoId: "",
-      responsavelId: responsavelIdPadrao,
-      dataPrazo: "",
-    });
+
+    if (!valoresIniciais) {
+      reset({
+        titulo: "",
+        descricao: "",
+        prioridade: PrioridadeTarefa.Media,
+        projetoId: "",
+        responsavelId: responsavelIdPadrao,
+        dataPrazo: "",
+      });
+    }
   }
 
   const dataAtual = new Date();
@@ -90,7 +129,7 @@ export function FormularioTarefa({
 
   return (
     <form className="formulario-padrao" onSubmit={handleSubmit(enviar)}>
-      <h3>Nova tarefa</h3>
+      <h3>{titulo}</h3>
 
       <label htmlFor="tituloTarefa">Titulo</label>
       <input id="tituloTarefa" type="text" {...register("titulo")} />
@@ -141,16 +180,29 @@ export function FormularioTarefa({
       <input
         id="dataPrazoTarefa"
         type="date"
-        min={dataMinimaPrazo}
+        min={permitirPrazoPassado ? undefined : dataMinimaPrazo}
         {...register("dataPrazo")}
       />
       {errors.dataPrazo && (
         <span className="mensagem-erro">{errors.dataPrazo.message}</span>
       )}
 
-      <button type="submit" disabled={emEnvio || projetos.length === 0}>
-        {emEnvio ? "Salvando..." : "Salvar tarefa"}
-      </button>
+      <div className="linha-botoes-formulario">
+        <button type="submit" disabled={emEnvio || projetos.length === 0}>
+          {emEnvio ? rotuloBotaoEmEnvio : rotuloBotao}
+        </button>
+
+        {aoCancelarEdicao && (
+          <button
+            type="button"
+            className="botao-secundario"
+            disabled={emEnvio}
+            onClick={aoCancelarEdicao}
+          >
+            Cancelar
+          </button>
+        )}
+      </div>
     </form>
   );
 }

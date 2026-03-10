@@ -12,6 +12,7 @@ interface PropriedadesTabelaTarefasOperacional {
   todasVisiveisSelecionadas: boolean;
   mapaProjetos: Map<string, string>;
   carregandoAtualizacaoStatus: boolean;
+  carregandoEdicao: boolean;
   carregandoExclusao: boolean;
   campoOrdenacao: CampoOrdenacaoTarefa;
   direcaoOrdenacao: DirecaoOrdenacaoTarefa;
@@ -20,6 +21,7 @@ interface PropriedadesTabelaTarefasOperacional {
   aoAlternarSelecao: (id: string) => void;
   aoAlterarStatus: (tarefa: TarefaResposta, novoStatus: StatusTarefa) => void;
   aoExcluir: (tarefa: TarefaResposta) => void;
+  aoEditar: (tarefa: TarefaResposta) => void;
   aoOrdenar: (campo: CampoOrdenacaoTarefa) => void;
 }
 
@@ -43,6 +45,7 @@ export function TabelaTarefasOperacional({
   todasVisiveisSelecionadas,
   mapaProjetos,
   carregandoAtualizacaoStatus,
+  carregandoEdicao,
   carregandoExclusao,
   campoOrdenacao,
   direcaoOrdenacao,
@@ -51,6 +54,7 @@ export function TabelaTarefasOperacional({
   aoAlternarSelecao,
   aoAlterarStatus,
   aoExcluir,
+  aoEditar,
   aoOrdenar,
 }: PropriedadesTabelaTarefasOperacional): JSX.Element {
   return (
@@ -170,14 +174,25 @@ export function TabelaTarefasOperacional({
                   </div>
                 </td>
                 <td>
-                  <button
-                    type="button"
-                    className="botao-perigo"
-                    onClick={() => aoExcluir(tarefa)}
-                    disabled={carregandoExclusao}
-                  >
-                    Excluir
-                  </button>
+                  <div className="acoes-item-listagem">
+                    <button
+                      type="button"
+                      className="botao-secundario"
+                      onClick={() => aoEditar(tarefa)}
+                      disabled={carregandoEdicao || carregandoExclusao}
+                    >
+                      Editar
+                    </button>
+
+                    <button
+                      type="button"
+                      className="botao-perigo"
+                      onClick={() => aoExcluir(tarefa)}
+                      disabled={carregandoExclusao || carregandoEdicao}
+                    >
+                      Excluir
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
