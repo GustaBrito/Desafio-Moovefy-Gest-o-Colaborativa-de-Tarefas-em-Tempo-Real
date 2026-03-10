@@ -53,13 +53,16 @@ public sealed class ControladorTarefas : ControllerBase
         [FromQuery] int tamanhoPagina = 20,
         CancellationToken cancellationToken = default)
     {
+        var dataPrazoInicialUtc = NormalizarDataFiltroParaUtc(dataPrazoInicial, fimDoDia: false);
+        var dataPrazoFinalUtc = NormalizarDataFiltroParaUtc(dataPrazoFinal, fimDoDia: true);
+
         var filtro = new FiltroConsultaTarefasEntrada
         {
             ProjetoId = projetoId,
             Status = status,
             ResponsavelId = responsavelId,
-            DataPrazoInicial = dataPrazoInicial,
-            DataPrazoFinal = dataPrazoFinal,
+            DataPrazoInicial = dataPrazoInicialUtc,
+            DataPrazoFinal = dataPrazoFinalUtc,
             CampoOrdenacao = campoOrdenacao,
             DirecaoOrdenacao = direcaoOrdenacao,
             NumeroPagina = numeroPagina,
@@ -70,8 +73,8 @@ public sealed class ControladorTarefas : ControllerBase
             projetoId,
             status,
             responsavelId,
-            dataPrazoInicial,
-            dataPrazoFinal,
+            dataPrazoInicialUtc,
+            dataPrazoFinalUtc,
             campoOrdenacao,
             direcaoOrdenacao,
             numeroPagina,
@@ -128,7 +131,7 @@ public sealed class ControladorTarefas : ControllerBase
             Prioridade = requisicao.Prioridade,
             ProjetoId = requisicao.ProjetoId,
             ResponsavelId = requisicao.ResponsavelId,
-            DataPrazo = requisicao.DataPrazo
+            DataPrazo = NormalizarDataRequisicaoParaUtc(requisicao.DataPrazo)
         };
 
         var tarefaCriada = await criarTarefaCasoDeUso.ExecutarAsync(entrada, cancellationToken);
@@ -158,7 +161,7 @@ public sealed class ControladorTarefas : ControllerBase
             Status = requisicao.Status,
             Prioridade = requisicao.Prioridade,
             ResponsavelId = requisicao.ResponsavelId,
-            DataPrazo = requisicao.DataPrazo
+            DataPrazo = NormalizarDataRequisicaoParaUtc(requisicao.DataPrazo)
         };
 
         var tarefaAtualizada = await atualizarTarefaCasoDeUso.ExecutarAsync(id, entrada, cancellationToken);
@@ -222,5 +225,40 @@ public sealed class ControladorTarefas : ControllerBase
     {
         servicoCacheConsulta.RemoverPorPrefixo(ChavesCacheConsulta.PrefixoTarefas);
         servicoCacheConsulta.Remover(ChavesCacheConsulta.ObterMetricasDashboard());
+    }
+
+    private static DateTime NormalizarDataRequisicaoParaUtc(DateTime valor)
+    {
+        return NormalizarParaUtc(valor);
+    }
+
+    private static DateTime? NormalizarDataFiltroParaUtc(DateTime? valor, bool fimDoDia)
+    {
+        if (!valor.HasValue)
+        {
+            return null;
+        }
+
+        var valorOriginal = valor.Value;
+        var valorUtc = NormalizarParaUtc(valorOriginal);
+
+        if (valorOriginal.TimeOfDay != TimeSpan.Zero)
+        {
+            return valorUtc;
+        }
+
+        return fimDoDia
+            ? valorUtc.Date.AddDays(1).AddTicks(-1)
+            : valorUtc.Date;
+    }
+
+    private static DateTime NormalizarParaUtc(DateTime valor)
+    {
+        return valor.Kind switch
+        {
+            DateTimeKind.Utc => valor,
+            DateTimeKind.Local => valor.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(valor, DateTimeKind.Utc)
+        };
     }
 }
