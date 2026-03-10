@@ -1,29 +1,11 @@
 ﻿# Desafio Moovefy: Gestão Colaborativa de Tarefas em Tempo Real
 
-## 1. Visão Geral
-Este repositório contém a construção incremental de um sistema web corporativo para gestão de tarefas em equipe, com foco em organização profissional, regras de negócio explícitas e notificações em tempo real.
+## Descrição do Projeto
+Sistema web full stack para gestão de projetos e tarefas em equipes, com autenticação JWT, dashboard de métricas e notificações em tempo real via SignalR.
 
-A implementação seguirá um fluxo controlado de commits, preservando arquitetura, legibilidade e consistência técnica em todas as camadas.
+O foco da implementação foi manter arquitetura profissional, regras de negócio explícitas e código legível, usando nomenclatura em português no domínio da solução.
 
-## 2. Objetivo do Sistema
-Entregar uma solução completa com:
-- backend em ASP.NET Core Web API (.NET 8)
-- frontend em React com TypeScript
-- banco relacional PostgreSQL
-- testes unitários e de integração
-- documentação técnica
-- Docker, CI/CD e manifests Kubernetes básicos
-
-## 3. Escopo Funcional
-O sistema deverá oferecer:
-- cadastro e gerenciamento de projetos
-- cadastro e gerenciamento de tarefas
-- filtros e ordenação
-- dashboard com métricas
-- autenticação e autorização
-- notificações em tempo real ao atribuir ou reatribuir tarefas
-
-## 4. Stack Tecnológica Definida
+## Tecnologias Utilizadas
 ### Backend
 - .NET 8
 - ASP.NET Core Web API
@@ -35,18 +17,7 @@ O sistema deverá oferecer:
 - JWT Bearer Authentication
 - IMemoryCache
 - Rate Limiting nativo do ASP.NET Core
-- Swagger / OpenAPI
-
-### Arquitetura
-- Clean Architecture leve
-- Camadas: Domínio, Aplicação, Infraestrutura e API
-- Patterns: Repository e Services/Casos de Uso
-
-### Testes
-- xUnit
-- FluentAssertions
-- testes unitários
-- testes de integração
+- Swagger/OpenAPI
 
 ### Frontend
 - React
@@ -59,27 +30,182 @@ O sistema deverá oferecer:
 - Tailwind CSS
 - Recharts
 
+### Testes
+- xUnit
+- FluentAssertions
+- testes unitários
+- testes de integração com `WebApplicationFactory`
+
 ### DevOps
 - Docker Compose
 - GitHub Actions
 - Kubernetes (manifests básicos)
 
-## 5. Regra de Nomenclatura
-Todo o código do projeto será escrito em português, incluindo:
-- classes
-- métodos
-- funções
-- componentes
-- arquivos
-- variáveis
-- DTOs
-- enums
-- serviços
-- pastas
+## Funcionalidades Entregues
+- CRUD completo de projetos
+- CRUD completo de tarefas
+- filtros, ordenação e paginação de tarefas
+- dashboard com métricas
+- autenticação e autorização com JWT
+- notificações em tempo real ao atribuir ou reatribuir tarefa
+- histórico simples de notificações
+- cache em endpoints de consulta
+- rate limiting global e específico no login
+- padronização de respostas e erros da API
 
-Exceções: nomes técnicos obrigatórios de frameworks, bibliotecas e configurações do ecossistema.
+## Como Executar com Docker
+### Pré-requisitos
+- Docker Desktop em execução
 
-## 6. Estrutura Inicial do Repositório
+### Subir a stack completa
+```bash
+docker compose --env-file .env.compose.example up -d --build
+```
+
+### URLs principais
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:5258`
+- Swagger: `http://localhost:5258/swagger`
+
+### Encerrar ambiente
+```bash
+docker compose down
+```
+
+## Como Executar sem Docker
+### Pré-requisitos
+- .NET SDK 8.0
+- Node.js 20+
+- npm 10+
+- PostgreSQL
+
+### Opção híbrida (recomendada para desenvolvimento local)
+1. Suba só o banco com Docker:
+```bash
+docker compose up -d banco_dados
+```
+
+2. Suba a API (PowerShell):
+```powershell
+$env:ASPNETCORE_ENVIRONMENT="Development"
+$env:ConnectionStrings__BancoDados="Host=localhost;Port=55433;Database=gerenciador_tarefas_dev;Username=postgres;Password=postgres"
+$env:BancoDados__AplicarMigracoesAutomaticamente="true"
+$env:BancoDados__AplicarSeedDadosDemonstracao="true"
+dotnet run --project backend/src/GerenciadorTarefas.Api
+```
+
+3. Suba o frontend:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+No PowerShell, copie o arquivo de ambiente com:
+```powershell
+Copy-Item .env.example .env
+```
+
+## Portas Usadas
+- Frontend (Vite/Nginx): `5173`
+- API (HTTP): `5258`
+- API (HTTPS local profile): `7188`
+- PostgreSQL no Docker Compose (host): `55433`
+- PostgreSQL no container/cluster: `5432`
+
+## Credenciais Padrão
+- Administrador
+  - Email: `admin@gerenciadortarefas.local`
+  - Senha: `Admin@123`
+- Colaborador
+  - Email: `colaborador@gerenciadortarefas.local`
+  - Senha: `Colaborador@123`
+
+## Endpoints Principais
+- `POST /api/autenticacao/login`
+- `GET/POST/PUT/DELETE /api/projetos`
+- `GET/POST/PUT/DELETE /api/tarefas`
+- `PATCH /api/tarefas/{id}/status`
+- `GET /api/dashboard/metricas`
+- `GET /api/notificacoes`
+- Hub SignalR: `/hubs/notificacoes`
+
+## Como Rodar Testes
+### Todos os testes
+```bash
+dotnet test backend/GerenciadorTarefas.sln -m:1 -v minimal
+```
+
+### Somente testes unitários
+```bash
+dotnet test backend/tests/GerenciadorTarefas.TestesUnitarios/GerenciadorTarefas.TestesUnitarios.csproj -m:1 -v minimal
+```
+
+### Somente testes de integração
+```bash
+dotnet test backend/tests/GerenciadorTarefas.TestesIntegracao/GerenciadorTarefas.TestesIntegracao.csproj -m:1 -v minimal
+```
+
+## CI/CD
+- Workflow em `.github/workflows/ci.yml`
+- Executa em `push` e `pull_request` para `main`
+- Etapas:
+  - backend: restore, build e test
+  - frontend: install e build
+
+## Kubernetes
+Manifests básicos em `kubernetes/`:
+- namespace
+- configmap
+- secret de exemplo
+- pvc
+- deployment/service de banco
+- deployment/service de API
+- deployment/service de frontend
+
+Observação: as imagens nos manifests são placeholders e devem ser substituídas pelas imagens publicadas do projeto.
+
+## Decisões Técnicas
+Detalhamento em:
+- `docs/arquitetura.md`
+- `docs/decisoes-tecnicas.md`
+
+Resumo:
+- Clean Architecture leve
+- Repository Pattern
+- casos de uso por contexto
+- controllers finos
+- regras de negócio no domínio/aplicação
+
+## Patterns Aplicados
+- Repository
+- Casos de Uso (Application Services)
+- DTOs separados de entidades
+- Middleware para tratamento global de exceções
+- Envelope padronizado de sucesso e erro
+
+## Trade-offs
+- Arquitetura limpa, porém sem overengineering (sem Unit of Work dedicado)
+- Autenticação com usuários de demonstração em configuração para simplificar ambiente local
+- Kubernetes básico para demonstração, sem ingress/HPA/observabilidade de cluster nesta fase
+
+## Uso de IA no Desenvolvimento
+A IA foi usada como apoio técnico para:
+- acelerar criação de estrutura e boilerplate
+- revisar coerência arquitetural
+- sugerir melhorias de organização e documentação
+
+Todo código gerado foi revisado, testado e ajustado manualmente antes de aceitação.
+
+## Melhorias Futuras
+- pipeline de deploy automatizado por ambiente (staging/prod)
+- observabilidade completa com tracing distribuído
+- rotação de segredos com secret manager
+- testes E2E no frontend
+- políticas RBAC mais granulares
+- ingress e autoscaling no Kubernetes
+
+## Estrutura do Projeto
 ```text
 /
   backend/
@@ -91,18 +217,12 @@ Exceções: nomes técnicos obrigatórios de frameworks, bibliotecas e configura
     tests/
       GerenciadorTarefas.TestesUnitarios/
       GerenciadorTarefas.TestesIntegracao/
-
   frontend/
     src/
       aplicacao/
       paginas/
       componentes/
       funcionalidades/
-        projetos/
-        tarefas/
-        dashboard/
-        autenticacao/
-        notificacoes/
       servicos/
       ganchos/
       contextos/
@@ -110,81 +230,15 @@ Exceções: nomes técnicos obrigatórios de frameworks, bibliotecas e configura
       tipos/
       utilitarios/
       estilos/
-
   docs/
     arquitetura.md
     decisoes-tecnicas.md
-
   kubernetes/
   .github/workflows/
   docker-compose.yml
-  README.md
 ```
 
-## 7. Plano Macro de Execução (42 commits)
-### Fase 1 - Fundação
-1. inicializar estrutura do repositório
-2. documentar escopo inicial e plano macro
-3. criar solução .NET em camadas
-4. iniciar frontend React com TypeScript
-5. configurar padronizações do repositório
-
-### Fase 2 - Domínio e Persistência
-6. entidades principais
-7. enums e regras de domínio
-8. contratos de repositório
-9. contexto e mapeamentos do banco
-10. migration inicial
-11. repositórios com EF Core
-
-### Fase 3 - API Base
-12. injeção de dependência
-13. Swagger
-14. tratamento global de exceções
-15. validações com FluentValidation
-16. logging com Serilog
-17. padronização de respostas e erros
-
-### Fase 4 - Projetos
-18. listar e obter projeto por id
-19. criar projeto
-20. atualizar projeto
-21. excluir projeto com validação
-22. endpoints de projetos
-
-### Fase 5 - Tarefas
-23. criar tarefa
-24. listar e obter tarefa por id
-25. filtros de tarefa
-26. ordenação e paginação
-27. atualização completa
-28. alteração de status
-29. regras de transição e data de conclusão
-30. bloqueio de exclusão em andamento
-31. sinalização de atraso
-32. endpoints completos de tarefas
-33. documentação da regra de cancelamento
-
-### Fase 6 - Dashboard e Notificações
-34. caso de uso de métricas
-35. endpoint de métricas
-36. SignalR
-37. notificação em atribuição/reatribuição
-38. histórico simples de notificações
-
-### Fase 7 - Segurança e Frontend
-39. autenticação/autorização com JWT
-40. páginas principais e formulários
-41. filtros, validações, loading, toasts e responsividade
-
-### Fase 8 - Fechamento
-42. testes, Docker, CI, cache, rate limiting, Kubernetes, seed e ajustes finais
-
-## 8. Status Atual
-- Commit 1 concluído: estrutura inicial do repositório
-- Commit 2 em desenvolvimento: documentação inicial de escopo e plano
-
-## 9. Forma de Trabalho
-- Um commit por vez
-- Sem avanço para funcionalidades futuras sem autorização
-- Mudanças pequenas, objetivas e rastreáveis
+## Observações Finais
+- O arquivo `frontend/.env` não deve ser versionado.
+- O projeto segue a convenção de nomenclatura em português para domínio e aplicação.
+- O fluxo de entrega foi incremental com commits pequenos e rastreáveis.

@@ -1,108 +1,132 @@
 ﻿# Arquitetura da Solução
 
-## 1. Visão Arquitetural
-A solução seguirá uma Clean Architecture leve, com separação clara de responsabilidades e baixo acoplamento entre camadas.
+## 1. Visão Geral
+A solução adota uma Clean Architecture leve para separar responsabilidades, reduzir acoplamento e manter evolução segura.
 
-Camadas principais:
-- Domínio
-- Aplicação
-- Infraestrutura
-- API
+Blocos principais:
+- backend em camadas (`Domínio`, `Aplicação`, `Infraestrutura`, `API`)
+- frontend em módulos por funcionalidade
+- PostgreSQL como persistência relacional
+- SignalR para comunicação em tempo real
 
-No frontend, a organização será por funcionalidades para manter alta coesão e evolução previsível.
+## 2. Camadas do Backend
 
-## 2. Backend
 ### 2.1 Domínio (`GerenciadorTarefas.Dominio`)
 Responsável por:
-- entidades centrais (`Projeto`, `Tarefa`)
-- enums de domínio (`StatusTarefa`, `PrioridadeTarefa`)
-- regras essenciais do negócio
-- contratos que representem necessidades do domínio
+- entidades centrais (`Projeto`, `Tarefa`, `Notificacao`)
+- enums (`StatusTarefa`, `PrioridadeTarefa`)
+- regras essenciais de negócio
+- contratos de repositório
 
-Diretrizes:
-- não depender de infraestrutura
-- concentrar regras de negócio críticas
+Regras importantes mantidas no domínio:
+- fluxo de status principal: `Pendente -> EmAndamento -> Concluida`
+- cancelamento explícito como estado terminal
+- preenchimento automático de `DataConclusao` ao concluir tarefa
+- cálculo de atraso de tarefa com base em prazo e status
 
 ### 2.2 Aplicação (`GerenciadorTarefas.Aplicacao`)
 Responsável por:
-- casos de uso
-- DTOs de entrada e saída
-- orquestração de regras entre domínio e persistência
-- validações de aplicação
+- casos de uso por contexto (projetos, tarefas, dashboard, notificações)
+- DTOs/modelos de entrada e saída
+- orquestração entre domínio, repositórios e serviços externos
 
-Diretrizes:
-- não conter detalhes de acesso a dados concretos
-- manter serviços/casos de uso pequenos e objetivos
+Diretriz:
+- não conter detalhes de infraestrutura
+- centralizar regras de aplicação e validações de fluxo
 
 ### 2.3 Infraestrutura (`GerenciadorTarefas.Infraestrutura`)
 Responsável por:
-- acesso ao banco PostgreSQL
-- implementação dos repositórios
-- configurações do EF Core e mapeamentos
-- integrações técnicas (cache, autenticação, notificações e afins)
+- `DbContext` e mapeamentos EF Core
+- migrations
+- repositórios concretos
+- seed de dados de demonstração
 
-Diretrizes:
-- encapsular detalhes de framework
-- expor implementações por contratos
+Implementações:
+- persistência em PostgreSQL
+- consultas paginadas e filtradas para tarefas
+- persistência de histórico de notificações
 
 ### 2.4 API (`GerenciadorTarefas.Api`)
 Responsável por:
 - exposição dos endpoints HTTP
-- composição da aplicação (injeção de dependência)
 - autenticação/autorização
-- middlewares transversais (erros, logging, rate limiting)
-- documentação OpenAPI/Swagger
+- documentação Swagger
+- middleware de tratamento global de exceções
+- observabilidade e políticas transversais
 
-Diretrizes:
-- controllers finos
-- sem regra de negócio na camada de API
+Diretriz:
+- controllers finos, sem regra de negócio
 
-## 3. Frontend
-Estrutura principal em `frontend/src`:
-- `paginas`: pontos de entrada de tela
-- `componentes`: componentes reutilizáveis
-- `funcionalidades`: módulos por contexto (`projetos`, `tarefas`, `dashboard`, `autenticacao`, `notificacoes`)
-- `servicos`: acesso à API
-- `ganchos`: hooks customizados
-- `contextos`: contexto global quando necessário
-- `rotas`: roteamento da aplicação
-- `tipos`: contratos de tipos
-- `utilitarios`: funções puras de apoio
-- `estilos`: estilos globais e tokens
+## 3. Dependências Entre Camadas
+Fluxo de dependência:
+- API -> Aplicação + Infraestrutura
+- Aplicação -> Domínio
+- Infraestrutura -> Aplicação + Domínio
+- Domínio -> sem dependências das demais camadas
 
-Diretrizes:
-- componentização por feature
-- validação de formulários com Zod
-- cache e sincronização com TanStack Query
+Essa direção garante isolamento das regras centrais e facilita testes.
 
-## 4. Fluxo de Dependência
-Regras de dependência no backend:
-- API depende de Aplicação e Infraestrutura
-- Infraestrutura depende de Aplicação e Domínio
-- Aplicação depende de Domínio
-- Domínio não depende de outras camadas
+## 4. Arquitetura do Frontend
+Estrutura em `frontend/src`:
+- `paginas`: composição de telas
+- `funcionalidades`: módulos por domínio (`projetos`, `tarefas`, `dashboard`, `autenticacao`, `notificacoes`)
+- `componentes`: elementos reutilizáveis
+- `servicos`: cliente HTTP e chamadas de API
+- `rotas`: roteamento e proteção por autenticação
+- `ganchos` e `contextos`: estado e comportamento compartilhado
 
-## 5. Regras de Negócio Prioritárias
-As seguintes regras serão tratadas como centrais no domínio/aplicação:
-- fluxo de status da tarefa (`Pendente -> EmAndamento -> Concluida`)
-- preenchimento automático de data de conclusão
-- bloqueio de exclusão de tarefa em andamento
-- bloqueio de exclusão de projeto com tarefas vinculadas
-- sinalização de tarefas vencidas
-- tratamento explícito de `Cancelada` como decisão técnica documentada
+Padrões de UI:
+- formulários com React Hook Form + Zod
+- cache de dados e sincronização com TanStack Query
+- destaque visual para tarefas atrasadas
 
-Detalhamento do cancelamento:
+## 5. Fluxos Principais
+
+### 5.1 Login
+1. frontend envia credenciais para `POST /api/autenticacao/login`
+2. API valida credenciais configuradas
+3. JWT retornado e usado nas chamadas autenticadas
+
+### 5.2 CRUD de tarefas
+1. requisição entra no controller
+2. caso de uso valida entrada e aplica regra de negócio
+3. repositório persiste alterações no banco
+4. API retorna envelope padronizado
+
+### 5.3 Notificação em tempo real
+1. criação/atualização de responsável dispara caso de uso
+2. serviço de notificações registra histórico
+3. SignalR envia evento para grupo do responsável
+
+## 6. Regras de Negócio Relevantes
+- tarefa em `EmAndamento` não pode ser excluída
+- projeto com tarefas vinculadas não pode ser excluído
 - `Cancelada` é estado terminal
-- cancelamento permitido apenas a partir de `Pendente` ou `EmAndamento`
-- não existe reabertura por transição de status após `Cancelada` ou `Concluida`
+- tarefas vencidas são sinalizadas automaticamente
+- conclusão preenche `DataConclusao`
 
-## 6. Observabilidade, Segurança e Escalabilidade
-Capacidades previstas:
-- logging estruturado com Serilog
+## 7. Capacidades Transversais
 - autenticação/autorização com JWT
-- notificações em tempo real com SignalR
-- cache com IMemoryCache
-- rate limiting nativo do ASP.NET Core
+- tratamento global de exceções com envelope padronizado
+- logging estruturado com Serilog
+- cache de consultas com IMemoryCache e invalidação por prefixo
+- rate limiting global e específico para login
+- CORS configurável com fallback para ambiente local
 
-## 7. Estratégia de Evolução
-A implementação seguirá fluxo incremental em commits pequenos e rastreáveis, reduzindo risco de regressão e facilitando revisão técnica contínua.
+## 8. Observabilidade e Qualidade
+- documentação OpenAPI/Swagger
+- testes unitários para regras de negócio prioritárias
+- testes de integração para endpoints críticos
+- workflow de CI para build e testes de backend e frontend
+
+## 9. Deploy e Operação
+- Docker Compose para ambiente local integrado
+- manifests Kubernetes básicos para namespace, banco, API e frontend
+- `ConfigMap` e `Secret` para configuração de runtime no cluster
+
+## 10. Evolução Recomendada
+- separar pipelines de CI e CD por ambiente
+- adicionar tracing distribuído
+- adotar secret manager
+- incluir testes E2E no frontend
+- incluir ingress, HPA e probes refinadas no Kubernetes

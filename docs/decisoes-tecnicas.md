@@ -1,101 +1,155 @@
-﻿# Decisões Técnicas Iniciais
+﻿# Decisões Técnicas
 
-## 1. Diretriz Geral
-A solução será construída com foco em clareza, simplicidade e organização profissional, priorizando legibilidade e manutenção de longo prazo.
+## 1. Escopo das Decisões
+Este documento registra as decisões técnicas principais adotadas na implementação, os trade-offs assumidos e os impactos na manutenção do sistema.
 
-## 2. Decisões de Arquitetura
-1. Adotar Clean Architecture leve.
-Motivo: separar responsabilidades sem criar complexidade desnecessária.
+## 2. Decisão: Clean Architecture Leve
+Decisão:
+- organizar backend em `Domínio`, `Aplicação`, `Infraestrutura` e `API`
 
-2. Organizar backend em quatro camadas (`Domínio`, `Aplicação`, `Infraestrutura`, `API`).
-Motivo: facilitar testes, evolução e isolamento de regras de negócio.
+Motivo:
+- separar responsabilidades e manter regras de negócio isoladas
 
-3. Organizar frontend por funcionalidades.
-Motivo: melhorar coesão e escalabilidade do código da interface.
+Impacto:
+- melhoria de testabilidade e clareza
+- aumento moderado de arquivos e contratos
 
-## 3. Decisões de Modelagem de Domínio
-1. Entidades centrais: `Projeto` e `Tarefa`.
-2. Enums explícitos: `StatusTarefa` e `PrioridadeTarefa`.
-3. Regras críticas de negócio não ficarão em controllers.
+## 3. Decisão: Repository Pattern sem Unit of Work Dedicado
+Decisão:
+- usar repositórios por agregado e persistência via EF Core
+- não criar camada adicional de Unit of Work dedicada nesta fase
 
-## 4. Decisões de Persistência
-1. Banco relacional PostgreSQL.
-Motivo: consistência transacional e aderência ao escopo do desafio.
+Motivo:
+- evitar complexidade prematura
 
-2. Acesso a dados com EF Core e repositórios.
-Motivo: manter abstração adequada sem overengineering.
+Impacto:
+- solução mais direta para o escopo atual
+- pode ser revisado caso surjam transações distribuídas mais complexas
 
-3. Uso de migration para versionamento de esquema.
-Motivo: rastreabilidade e repetibilidade de ambiente.
+## 4. Decisão: Status `Cancelada` como Estado Terminal
+Decisão:
+- `Cancelada` é estado final, assim como `Concluida`
 
-## 5. Decisões de API e Qualidade
-1. Swagger/OpenAPI habilitado desde a base da API.
-2. Tratamento global de exceções.
-3. Validações com FluentValidation.
-4. Padronização de respostas e erros.
-5. Logging estruturado com Serilog.
+Regras:
+- permitido: `Pendente -> Cancelada`
+- permitido: `EmAndamento -> Cancelada`
+- proibido sair de `Cancelada` ou `Concluida`
 
-## 6. Decisões de Frontend
-1. React + TypeScript + Vite.
-2. TanStack Query para consumo/cache de API.
-3. React Hook Form + Zod para formulários e validação.
-4. Tailwind CSS para produtividade com consistência visual.
+Motivo:
+- preservar rastreabilidade e evitar reabertura ambígua por transição
 
-## 7. Decisões de Segurança e Tempo Real
-1. Autenticação/autorização com JWT.
-2. Notificações em tempo real com SignalR para atribuição e reatribuição de tarefas.
+Impacto:
+- transição inválida retorna erro de operação inválida (HTTP 400)
 
-## 8. Decisões de Operação
-1. Docker Compose para execução local integrada.
-2. GitHub Actions para CI/CD.
-3. Manifests Kubernetes básicos para demonstração de prontidão de deploy.
+## 5. Decisão: Autenticação JWT com Usuários de Demonstração
+Decisão:
+- autenticação JWT com usuários definidos em configuração da API
 
-## 9. Padrões e Princípios
-- Repository Pattern
-- Services/Casos de Uso
-- DTOs separados de entidades
-- SOLID e Clean Code
-- controllers finos
+Motivo:
+- simplificar setup local e testes do desafio
 
-## 10. Trade-offs Assumidos Neste Momento
-1. Clean Architecture leve em vez de arquitetura extremamente detalhada.
-Trade-off: menor formalismo em troca de entrega mais objetiva.
+Impacto:
+- acelera desenvolvimento e validação manual
+- não substitui integração com identidade corporativa real
 
-2. Uso de componentes simples e reutilizáveis no frontend, sem biblioteca visual complexa.
-Trade-off: menos abstrações iniciais para manter curva de manutenção baixa.
+Evolução futura:
+- migrar para provedor externo (Identity, OAuth2/OIDC, etc.)
 
-3. Unit of Work apenas se necessidade real surgir.
-Trade-off: evitar complexidade antecipada.
+## 6. Decisão: Notificações com SignalR + Histórico Persistido
+Decisão:
+- enviar notificações em tempo real ao responsável por grupo SignalR
+- persistir histórico de notificações no banco
 
-## 11. Registro de Evolução
-Este documento será atualizado ao longo dos commits para registrar decisões complementares, incluindo:
-- estratégia de cache
-- política de rate limiting
-- decisões finais de autenticação
-- decisões finais de notificações
+Motivo:
+- atender requisito de tempo real sem perder trilha histórica
 
-## 12. Decisão Técnica: Status `Cancelada` como Estado Terminal
-### 12.1 Regra adotada
-O status `Cancelada` é tratado como estado terminal da tarefa.
+Impacto:
+- cobertura funcional para uso online e consulta posterior
 
-Isso significa:
-- transições permitidas para cancelamento: `Pendente -> Cancelada` e `EmAndamento -> Cancelada`
-- não é permitido sair de `Cancelada` para qualquer outro status
-- não é permitido sair de `Concluida` para qualquer outro status
+## 7. Decisão: Cache de Consulta com IMemoryCache
+Decisão:
+- aplicar cache em listagens e consultas de projetos, tarefas e dashboard
+- invalidar cache em mutações relacionadas
 
-### 12.2 Fluxo oficial de status
-- fluxo principal: `Pendente -> EmAndamento -> Concluida`
-- fluxo alternativo de encerramento: `Pendente/EmAndamento -> Cancelada`
+Motivo:
+- reduzir custo de leitura e latência em endpoints consultivos
 
-### 12.3 Justificativa técnica
-1. Preserva histórico e rastreabilidade: tarefa cancelada não deve ser reaberta por transição de status.
-2. Evita ambiguidade operacional: reduz cenários de ida e volta entre estados finais.
-3. Simplifica manutenção da regra no domínio: máquina de estados explícita e previsível.
+Impacto:
+- melhora de desempenho em cenários de leitura repetida
+- exige disciplina de invalidação para evitar dado obsoleto
 
-### 12.4 Impacto na API
-- tentativas de transição inválida resultam em erro de operação inválida (HTTP 400 pelo tratamento global)
-- a validação de transição permanece centralizada no domínio, não em controllers
+## 8. Decisão: Rate Limiting Nativo do ASP.NET Core
+Decisão:
+- política global por janela fixa
+- política mais restritiva para login
 
-### 12.5 Relação com outras regras
-- `DataConclusao` é preenchida automaticamente apenas em `Concluida`
-- tarefas `Cancelada` não são consideradas atrasadas
+Motivo:
+- proteção básica contra abuso e brute force em autenticação
+
+Impacto:
+- respostas padronizadas com HTTP 429 e `Retry-After` quando aplicável
+
+## 9. Decisão: Seed de Dados para Demonstração
+Decisão:
+- inserir dados iniciais de projetos, tarefas e notificações em desenvolvimento
+
+Motivo:
+- reduzir esforço manual para demonstração e testes exploratórios
+
+Impacto:
+- onboarding mais rápido do avaliador e do time
+
+## 10. Decisão: Docker Compose como Ambiente Local Padrão
+Decisão:
+- orquestrar banco, API e frontend com `docker compose`
+
+Motivo:
+- padronizar ambiente local e reduzir divergências de setup
+
+Impacto:
+- menor custo de entrada para execução do projeto
+
+## 11. Decisão: Pipeline de CI no GitHub Actions
+Decisão:
+- workflow com build e testes do backend + build do frontend
+
+Motivo:
+- validar saúde básica da entrega a cada push/PR
+
+Impacto:
+- redução de regressões antes de merge
+
+## 12. Decisão: Kubernetes Básico para Prontidão de Deploy
+Decisão:
+- adicionar manifests de namespace, deployments, services, configmap, secret de exemplo e pvc
+
+Motivo:
+- demonstrar preparação para execução em cluster
+
+Impacto:
+- base de deploy criada
+- ainda sem ingress, autoscaling e políticas avançadas
+
+## 13. Trade-offs Assumidos
+- autenticação simplificada por configuração em vez de identidade corporativa
+- Kubernetes em nível básico para foco no core funcional
+- ausência de testes E2E de frontend nesta etapa
+- ausência de observabilidade distribuída completa
+
+## 14. Uso de IA no Desenvolvimento
+Uso aplicado:
+- apoio na estrutura inicial e automações repetitivas
+- revisão de consistência arquitetural
+- aceleração na documentação
+
+Governança adotada:
+- revisão manual de todo código gerado
+- validação com testes e execução local
+- ajustes humanos para regras de negócio e clareza
+
+## 15. Melhorias Futuras Priorizadas
+1. autenticação integrada a provedor de identidade real
+2. CD com deploy automatizado por ambiente
+3. observabilidade com métricas, tracing e correlação fim a fim
+4. testes E2E do frontend
+5. Kubernetes com ingress, HPA, probes refinadas e gestão de segredos
