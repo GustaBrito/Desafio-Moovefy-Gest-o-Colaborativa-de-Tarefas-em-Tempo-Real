@@ -16,7 +16,11 @@ import type { SessaoAutenticacao } from "../tipos/autenticacao";
 export interface ValorContextoAutenticacao {
   sessao: SessaoAutenticacao | null;
   estaAutenticado: boolean;
-  realizarLogin: (email: string, senha: string) => Promise<void>;
+  realizarLogin: (
+    email: string,
+    senha: string,
+    lembrarSessao?: boolean
+  ) => Promise<void>;
   realizarLogout: () => void;
 }
 
@@ -31,22 +35,25 @@ export function ProvedorAutenticacao({
     obterSessaoArmazenada()
   );
 
-  const realizarLogin = useCallback(async (email: string, senha: string) => {
-    const respostaLogin = await realizarLoginApi({ email, senha });
+  const realizarLogin = useCallback(
+    async (email: string, senha: string, lembrarSessao: boolean = true) => {
+      const respostaLogin = await realizarLoginApi({ email, senha });
 
-    const novaSessao: SessaoAutenticacao = {
-      usuarioId: respostaLogin.usuarioId,
-      nome: respostaLogin.nome,
-      email: respostaLogin.email,
-      perfil: respostaLogin.perfil,
-      tokenAcesso: respostaLogin.tokenAcesso,
-      tipoToken: respostaLogin.tipoToken,
-      expiraEmUtc: respostaLogin.expiraEmUtc,
-    };
+      const novaSessao: SessaoAutenticacao = {
+        usuarioId: respostaLogin.usuarioId,
+        nome: respostaLogin.nome,
+        email: respostaLogin.email,
+        perfil: respostaLogin.perfil,
+        tokenAcesso: respostaLogin.tokenAcesso,
+        tipoToken: respostaLogin.tipoToken,
+        expiraEmUtc: respostaLogin.expiraEmUtc,
+      };
 
-    salvarSessao(novaSessao);
-    setSessao(novaSessao);
-  }, []);
+      salvarSessao(novaSessao, lembrarSessao);
+      setSessao(novaSessao);
+    },
+    []
+  );
 
   const realizarLogout = useCallback(() => {
     removerSessao();

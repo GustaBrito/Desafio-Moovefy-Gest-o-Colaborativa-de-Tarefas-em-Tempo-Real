@@ -7,6 +7,35 @@ interface OpcoesRequisicaoApi extends Omit<RequestInit, "body"> {
   corpo?: unknown;
 }
 
+export class ErroRequisicaoApi extends Error {
+  public readonly status: number;
+  public readonly codigo: string;
+  public readonly detalhe?: string;
+  public readonly codigoRastreio?: string;
+  public readonly retryAfterSegundos?: number;
+
+  constructor(parametros: {
+    mensagem: string;
+    status: number;
+    codigo: string;
+    detalhe?: string;
+    codigoRastreio?: string;
+    retryAfterSegundos?: number;
+  }) {
+    super(parametros.mensagem);
+    this.name = "ErroRequisicaoApi";
+    this.status = parametros.status;
+    this.codigo = parametros.codigo;
+    this.detalhe = parametros.detalhe;
+    this.codigoRastreio = parametros.codigoRastreio;
+    this.retryAfterSegundos = parametros.retryAfterSegundos;
+  }
+}
+
+export function obterUrlBaseApi(): string {
+  return urlBaseApi;
+}
+
 export async function requisitarApi<TResposta>(
   rota: string,
   opcoes: OpcoesRequisicaoApi = {}
@@ -25,11 +54,22 @@ export async function requisitarApi<TResposta>(
     headers.set("Authorization", `Bearer ${sessao.tokenAcesso}`);
   }
 
-  const resposta = await fetch(url, {
-    method: opcoes.method ?? "GET",
-    headers,
-    body: opcoes.corpo !== undefined ? JSON.stringify(opcoes.corpo) : undefined,
-  });
+  let resposta: Response;
+
+  try {
+    resposta = await fetch(url, {
+      method: opcoes.method ?? "GET",
+      headers,
+      body: opcoes.corpo !== undefined ? JSON.stringify(opcoes.corpo) : undefined,
+    });
+  } catch {
+    throw new ErroRequisicaoApi({
+      mensagem:
+        "Nao foi possivel conectar com a API. Verifique se o backend esta online.",
+      status: 0,
+      codigo: "falha_rede",
+    });
+  }
 
   if (!resposta.ok) {
     await lancarErroApi(resposta);
@@ -45,14 +85,29 @@ export async function requisitarApi<TResposta>(
 }
 
 async function lancarErroApi(resposta: Response): Promise<never> {
-  let mensagemErro = "Falha na requisicao.";
+  const retryAfterCabecalho = resposta.headers.get("Retry-After");
+  const retryAfterSegundos = retryAfterCabecalho
+    ? Number.parseInt(retryAfterCabecalho, 10)
+    : undefined;
+
+  let erroApi: RespostaErroApi | null = null;
 
   try {
-    const erro = (await resposta.json()) as RespostaErroApi;
-    mensagemErro = erro.detalhe || erro.mensagem || mensagemErro;
+    erroApi = (await resposta.json()) as RespostaErroApi;
   } catch {
-    // Mantem mensagem padrao quando o corpo nao e JSON.
+    // Mantem erro padrao quando o corpo nao for JSON.
   }
 
-  throw new Error(mensagemErro);
+  throw new ErroRequisicaoApi({
+    mensagem:
+      erroApi?.detalhe || erroApi?.mensagem || "Falha na requisicao.",
+    status: erroApi?.status || resposta.status,
+    codigo: erroApi?.codigo || "erro_requisicao",
+    detalhe: erroApi?.detalhe,
+    codigoRastreio: erroApi?.codigoRastreio,
+    retryAfterSegundos:
+      typeof retryAfterSegundos === "number" && !Number.isNaN(retryAfterSegundos)
+        ? retryAfterSegundos
+        : undefined,
+  });
 }
