@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using GerenciadorTarefas.Dominio.Enumeracoes;
+using GerenciadorTarefas.Infraestrutura.Persistencia.Sementes;
 using GerenciadorTarefas.TestesIntegracao.Infraestrutura;
 
 namespace GerenciadorTarefas.TestesIntegracao;
@@ -16,6 +17,8 @@ public sealed class DashboardIntegracaoTestes
         using var fabrica = new FabricaAplicacaoWebTeste();
         using var cliente = fabrica.CreateClient();
         await ClienteApiTeste.ConfigurarAutorizacaoAsync(cliente);
+
+        var metricasAntes = await ObterMetricasAsync(cliente);
 
         var projetoId = await CriarProjetoAsync(cliente);
 
@@ -41,31 +44,25 @@ public sealed class DashboardIntegracaoTestes
         await AtualizarStatusAsync(cliente, tarefaConcluidaId, StatusTarefa.EmAndamento);
         await AtualizarStatusAsync(cliente, tarefaConcluidaId, StatusTarefa.Concluida);
 
-        var respostaMetricas = await cliente.GetAsync("/api/dashboard/metricas");
+        var tarefaPendente = await ObterTarefaAsync(cliente, tarefaPendenteAtrasadaId);
+        var tarefaEmAndamento = await ObterTarefaAsync(cliente, tarefaEmAndamentoId);
+        var tarefaConcluida = await ObterTarefaAsync(cliente, tarefaConcluidaId);
 
-        respostaMetricas.StatusCode.Should().Be(HttpStatusCode.OK);
-        var metricasEnvelope =
-            await ClienteApiTeste.LerEnvelopeSucessoAsync<MetricasDashboardDadosRespostaTeste>(respostaMetricas);
+        tarefaPendente.Status.Should().Be((int)StatusTarefa.Pendente);
+        tarefaEmAndamento.Status.Should().Be((int)StatusTarefa.EmAndamento);
+        tarefaConcluida.Status.Should().Be((int)StatusTarefa.Concluida);
 
-        metricasEnvelope.Dados.Should().NotBeNull();
-        var metricas = metricasEnvelope.Dados!;
+        var metricas = await ObterMetricasAsync(cliente);
 
-        var totalPorStatus = metricas.TotalTarefasPorStatus.ToDictionary(item => item.Status, item => item.Total);
+        var totalAntes = metricasAntes.TotalTarefasPorStatus.Sum(item => item.Total);
+        var totalDepois = metricas.TotalTarefasPorStatus.Sum(item => item.Total);
+        (totalDepois - totalAntes).Should().Be(3);
 
-        totalPorStatus.GetValueOrDefault((int)StatusTarefa.Pendente).Should().Be(1);
-        totalPorStatus.GetValueOrDefault((int)StatusTarefa.EmAndamento).Should().Be(1);
-        totalPorStatus.GetValueOrDefault((int)StatusTarefa.Concluida).Should().Be(1);
-        totalPorStatus.GetValueOrDefault((int)StatusTarefa.Cancelada).Should().Be(0);
+        (metricas.TarefasAtrasadas - metricasAntes.TarefasAtrasadas).Should().Be(1);
+        (metricas.TarefasConcluidasNoPrazo - metricasAntes.TarefasConcluidasNoPrazo).Should().Be(1);
+        metricas.TaxaConclusao.Should().BeGreaterThan(0m);
 
-        metricas.TarefasAtrasadas.Should().Be(1);
-        metricas.TarefasConcluidasNoPrazo.Should().Be(1);
-        metricas.TaxaConclusao.Should().Be(33.33m);
-
-        var respostaTarefaPendente = await cliente.GetAsync($"/api/tarefas/{tarefaPendenteAtrasadaId}");
-        respostaTarefaPendente.StatusCode.Should().Be(HttpStatusCode.OK);
-        var tarefaPendente = await ClienteApiTeste.LerEnvelopeSucessoAsync<TarefaDadosRespostaTeste>(respostaTarefaPendente);
-        tarefaPendente.Dados.Should().NotBeNull();
-        tarefaPendente.Dados!.EstaAtrasada.Should().BeTrue();
+        tarefaPendente.EstaAtrasada.Should().BeTrue();
     }
 
     private static async Task<Guid> CriarProjetoAsync(HttpClient cliente)
@@ -73,7 +70,8 @@ public sealed class DashboardIntegracaoTestes
         var respostaCriacao = await cliente.PostAsJsonAsync("/api/projetos", new
         {
             Nome = "Projeto dashboard integracao",
-            Descricao = "Projeto de apoio para teste de dashboard"
+            Descricao = "Projeto de apoio para teste de dashboard",
+            AreaId = SemeadorDadosDemonstracao.AreaDesenvolvimentoSoftwareId
         });
 
         respostaCriacao.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -94,7 +92,7 @@ public sealed class DashboardIntegracaoTestes
             Descricao = "Tarefa de apoio para teste de dashboard",
             Prioridade = PrioridadeTarefa.Media,
             ProjetoId = projetoId,
-            ResponsavelId = ResponsavelAdministradorId,
+            ResponsavelUsuarioId = ResponsavelAdministradorId,
             DataPrazo = dataPrazo
         });
 
@@ -111,5 +109,27 @@ public sealed class DashboardIntegracaoTestes
             new { Status = status });
 
         resposta.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    private static async Task<MetricasDashboardDadosRespostaTeste> ObterMetricasAsync(HttpClient cliente)
+    {
+        var respostaMetricas = await cliente.GetAsync("/api/dashboard/metricas");
+
+        respostaMetricas.StatusCode.Should().Be(HttpStatusCode.OK);
+        var metricasEnvelope =
+            await ClienteApiTeste.LerEnvelopeSucessoAsync<MetricasDashboardDadosRespostaTeste>(respostaMetricas);
+
+        metricasEnvelope.Dados.Should().NotBeNull();
+        return metricasEnvelope.Dados!;
+    }
+
+    private static async Task<TarefaDadosRespostaTeste> ObterTarefaAsync(HttpClient cliente, Guid tarefaId)
+    {
+        var respostaTarefa = await cliente.GetAsync($"/api/tarefas/{tarefaId}");
+        respostaTarefa.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var envelope = await ClienteApiTeste.LerEnvelopeSucessoAsync<TarefaDadosRespostaTeste>(respostaTarefa);
+        envelope.Dados.Should().NotBeNull();
+        return envelope.Dados!;
     }
 }

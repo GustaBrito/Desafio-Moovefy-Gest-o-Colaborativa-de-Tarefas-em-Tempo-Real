@@ -1,8 +1,10 @@
 using GerenciadorTarefas.Aplicacao.Contratos.Tarefas;
+using GerenciadorTarefas.Aplicacao.Contratos.Projetos;
 using GerenciadorTarefas.Aplicacao.Modelos.Paginacao;
 using GerenciadorTarefas.Aplicacao.Modelos.Tarefas;
 using GerenciadorTarefas.Api.Contratos.Requisicoes.Tarefas;
 using GerenciadorTarefas.Api.Contratos.Respostas;
+using GerenciadorTarefas.Api.Seguranca;
 using GerenciadorTarefas.Api.Servicos.Cache;
 using GerenciadorTarefas.Dominio.Enumeracoes;
 using GerenciadorTarefas.Dominio.Modelos.Tarefas;
@@ -21,6 +23,7 @@ public sealed class ControladorTarefas : ControllerBase
     private readonly IAtualizarTarefaCasoDeUso atualizarTarefaCasoDeUso;
     private readonly IAtualizarStatusTarefaCasoDeUso atualizarStatusTarefaCasoDeUso;
     private readonly IExcluirTarefaCasoDeUso excluirTarefaCasoDeUso;
+    private readonly IConsultaProjetosCasoDeUso consultaProjetosCasoDeUso;
     private readonly IServicoCacheConsulta servicoCacheConsulta;
 
     public ControladorTarefas(
@@ -29,6 +32,7 @@ public sealed class ControladorTarefas : ControllerBase
         IAtualizarTarefaCasoDeUso atualizarTarefaCasoDeUso,
         IAtualizarStatusTarefaCasoDeUso atualizarStatusTarefaCasoDeUso,
         IExcluirTarefaCasoDeUso excluirTarefaCasoDeUso,
+        IConsultaProjetosCasoDeUso consultaProjetosCasoDeUso,
         IServicoCacheConsulta servicoCacheConsulta)
     {
         this.consultaTarefasCasoDeUso = consultaTarefasCasoDeUso;
@@ -36,6 +40,7 @@ public sealed class ControladorTarefas : ControllerBase
         this.atualizarTarefaCasoDeUso = atualizarTarefaCasoDeUso;
         this.atualizarStatusTarefaCasoDeUso = atualizarStatusTarefaCasoDeUso;
         this.excluirTarefaCasoDeUso = excluirTarefaCasoDeUso;
+        this.consultaProjetosCasoDeUso = consultaProjetosCasoDeUso;
         this.servicoCacheConsulta = servicoCacheConsulta;
     }
 
@@ -44,7 +49,7 @@ public sealed class ControladorTarefas : ControllerBase
     public async Task<ActionResult<RespostaSucessoApi<ResultadoPaginado<TarefaResposta>>>> ListarTarefasAsync(
         [FromQuery] Guid? projetoId,
         [FromQuery] StatusTarefa? status,
-        [FromQuery] Guid? responsavelId,
+        [FromQuery] Guid? responsavelUsuarioId,
         [FromQuery] DateTime? dataPrazoInicial,
         [FromQuery] DateTime? dataPrazoFinal,
         [FromQuery] CampoOrdenacaoTarefa? campoOrdenacao,
@@ -53,6 +58,14 @@ public sealed class ControladorTarefas : ControllerBase
         [FromQuery] int tamanhoPagina = 20,
         CancellationToken cancellationToken = default)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
+        if (contextoUsuario.EhColaborador
+            && responsavelUsuarioId.HasValue
+            && responsavelUsuarioId.Value != contextoUsuario.UsuarioId)
+        {
+            return Forbid();
+        }
+
         var dataPrazoInicialUtc = NormalizarDataFiltroParaUtc(dataPrazoInicial, fimDoDia: false);
         var dataPrazoFinalUtc = NormalizarDataFiltroParaUtc(dataPrazoFinal, fimDoDia: true);
 
@@ -60,7 +73,8 @@ public sealed class ControladorTarefas : ControllerBase
         {
             ProjetoId = projetoId,
             Status = status,
-            ResponsavelId = responsavelId,
+            ResponsavelUsuarioId = responsavelUsuarioId,
+            AreasProjetoPermitidas = contextoUsuario.EhSuperAdmin ? null : contextoUsuario.AreaIds,
             DataPrazoInicial = dataPrazoInicialUtc,
             DataPrazoFinal = dataPrazoFinalUtc,
             CampoOrdenacao = campoOrdenacao,
@@ -72,13 +86,13 @@ public sealed class ControladorTarefas : ControllerBase
         var chaveCache = ChavesCacheConsulta.ObterListaTarefas(
             projetoId,
             status,
-            responsavelId,
+            responsavelUsuarioId,
             dataPrazoInicialUtc,
             dataPrazoFinalUtc,
             campoOrdenacao,
             direcaoOrdenacao,
             numeroPagina,
-            tamanhoPagina);
+            tamanhoPagina) + $":u:{contextoUsuario.UsuarioId:N}";
 
         var tarefas = await servicoCacheConsulta.ObterOuCriarAsync(
             chaveCache,
@@ -102,11 +116,17 @@ public sealed class ControladorTarefas : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
         var tarefa = await servicoCacheConsulta.ObterOuCriarAsync(
-            ChavesCacheConsulta.ObterTarefaPorId(id),
+            $"{ChavesCacheConsulta.ObterTarefaPorId(id)}:u:{contextoUsuario.UsuarioId:N}",
             PoliticasCacheConsulta.DuracaoTarefas,
             _ => consultaTarefasCasoDeUso.ObterPorIdAsync(id, cancellationToken),
             cancellationToken);
+
+        if (!await PodeAcessarTarefaAsync(contextoUsuario, tarefa, cancellationToken))
+        {
+            return Forbid();
+        }
 
         var resposta = new RespostaSucessoApi<TarefaResposta>
         {
@@ -124,13 +144,25 @@ public sealed class ControladorTarefas : ControllerBase
         [FromBody] CriarTarefaRequisicao requisicao,
         CancellationToken cancellationToken)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
+        if (contextoUsuario.EhColaborador)
+        {
+            return Forbid();
+        }
+
+        var projeto = await consultaProjetosCasoDeUso.ObterPorIdAsync(requisicao.ProjetoId, cancellationToken);
+        if (!contextoUsuario.EhSuperAdmin && !contextoUsuario.AreaIds.Contains(projeto.AreaId))
+        {
+            return Forbid();
+        }
+
         var entrada = new CriarTarefaEntrada
         {
             Titulo = requisicao.Titulo,
             Descricao = requisicao.Descricao,
             Prioridade = requisicao.Prioridade,
             ProjetoId = requisicao.ProjetoId,
-            ResponsavelId = requisicao.ResponsavelId,
+            ResponsavelUsuarioId = requisicao.ResponsavelUsuarioId,
             DataPrazo = NormalizarDataRequisicaoParaUtc(requisicao.DataPrazo)
         };
 
@@ -154,13 +186,25 @@ public sealed class ControladorTarefas : ControllerBase
         [FromBody] AtualizarTarefaRequisicao requisicao,
         CancellationToken cancellationToken)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
+        if (contextoUsuario.EhColaborador)
+        {
+            return Forbid();
+        }
+
+        var tarefaAtual = await consultaTarefasCasoDeUso.ObterPorIdAsync(id, cancellationToken);
+        if (!await PodeAcessarTarefaAsync(contextoUsuario, tarefaAtual, cancellationToken))
+        {
+            return Forbid();
+        }
+
         var entrada = new AtualizarTarefaEntrada
         {
             Titulo = requisicao.Titulo,
             Descricao = requisicao.Descricao,
             Status = requisicao.Status,
             Prioridade = requisicao.Prioridade,
-            ResponsavelId = requisicao.ResponsavelId,
+            ResponsavelUsuarioId = requisicao.ResponsavelUsuarioId,
             DataPrazo = NormalizarDataRequisicaoParaUtc(requisicao.DataPrazo)
         };
 
@@ -184,6 +228,18 @@ public sealed class ControladorTarefas : ControllerBase
         [FromBody] AtualizarStatusTarefaRequisicao requisicao,
         CancellationToken cancellationToken)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
+        var tarefaAtual = await consultaTarefasCasoDeUso.ObterPorIdAsync(id, cancellationToken);
+        if (!await PodeAcessarTarefaAsync(contextoUsuario, tarefaAtual, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        if (contextoUsuario.EhColaborador && tarefaAtual.ResponsavelUsuarioId != contextoUsuario.UsuarioId)
+        {
+            return Forbid();
+        }
+
         var entrada = new AtualizarStatusTarefaEntrada
         {
             Status = requisicao.Status
@@ -208,6 +264,18 @@ public sealed class ControladorTarefas : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
+        if (contextoUsuario.EhColaborador)
+        {
+            return Forbid();
+        }
+
+        var tarefaAtual = await consultaTarefasCasoDeUso.ObterPorIdAsync(id, cancellationToken);
+        if (!await PodeAcessarTarefaAsync(contextoUsuario, tarefaAtual, cancellationToken))
+        {
+            return Forbid();
+        }
+
         await excluirTarefaCasoDeUso.ExecutarAsync(id, cancellationToken);
         InvalidarCacheTarefasEDashboard();
 
@@ -224,7 +292,21 @@ public sealed class ControladorTarefas : ControllerBase
     private void InvalidarCacheTarefasEDashboard()
     {
         servicoCacheConsulta.RemoverPorPrefixo(ChavesCacheConsulta.PrefixoTarefas);
-        servicoCacheConsulta.Remover(ChavesCacheConsulta.ObterMetricasDashboard());
+        servicoCacheConsulta.RemoverPorPrefixo(ChavesCacheConsulta.PrefixoDashboard);
+    }
+
+    private async Task<bool> PodeAcessarTarefaAsync(
+        ContextoUsuarioAutenticado contextoUsuario,
+        TarefaResposta tarefa,
+        CancellationToken cancellationToken)
+    {
+        if (contextoUsuario.EhSuperAdmin)
+        {
+            return true;
+        }
+
+        var projeto = await consultaProjetosCasoDeUso.ObterPorIdAsync(tarefa.ProjetoId, cancellationToken);
+        return contextoUsuario.AreaIds.Contains(projeto.AreaId);
     }
 
     private static DateTime NormalizarDataRequisicaoParaUtc(DateTime valor)
