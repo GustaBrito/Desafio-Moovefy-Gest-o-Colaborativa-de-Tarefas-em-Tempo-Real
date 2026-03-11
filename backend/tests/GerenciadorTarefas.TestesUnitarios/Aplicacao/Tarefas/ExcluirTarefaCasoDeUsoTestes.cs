@@ -64,7 +64,7 @@ public sealed class ExcluirTarefaCasoDeUsoTestes
             Status = status,
             Prioridade = PrioridadeTarefa.Media,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
             DataCriacao = DateTime.UtcNow.AddDays(-2),
             DataPrazo = DateTime.UtcNow.AddDays(3)
         };

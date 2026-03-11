@@ -7,7 +7,8 @@ public sealed class FiltroConsultaTarefasEntrada
 {
     public Guid? ProjetoId { get; init; }
     public StatusTarefa? Status { get; init; }
-    public Guid? ResponsavelId { get; init; }
+    public Guid? ResponsavelUsuarioId { get; init; }
+    public IReadOnlyCollection<Guid>? AreasProjetoPermitidas { get; init; }
     public DateTime? DataPrazoInicial { get; init; }
     public DateTime? DataPrazoFinal { get; init; }
     public CampoOrdenacaoTarefa? CampoOrdenacao { get; init; }

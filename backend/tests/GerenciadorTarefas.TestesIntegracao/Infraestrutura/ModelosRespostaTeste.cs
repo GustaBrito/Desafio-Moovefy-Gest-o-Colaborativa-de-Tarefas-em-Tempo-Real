@@ -23,7 +23,8 @@ internal sealed class LoginDadosRespostaTeste
     public Guid UsuarioId { get; init; }
     public string Nome { get; init; } = string.Empty;
     public string Email { get; init; } = string.Empty;
-    public string Perfil { get; init; } = string.Empty;
+    public int PerfilGlobal { get; init; }
+    public IReadOnlyCollection<Guid> AreaIds { get; init; } = [];
     public string TokenAcesso { get; init; } = string.Empty;
     public string TipoToken { get; init; } = string.Empty;
     public DateTime ExpiraEmUtc { get; init; }
@@ -34,6 +35,8 @@ internal sealed class ProjetoDadosRespostaTeste
     public Guid Id { get; init; }
     public string Nome { get; init; } = string.Empty;
     public string? Descricao { get; init; }
+    public Guid AreaId { get; init; }
+    public string AreaNome { get; init; } = string.Empty;
     public DateTime DataCriacao { get; init; }
 }
 
@@ -45,7 +48,10 @@ internal sealed class TarefaDadosRespostaTeste
     public int Status { get; init; }
     public int Prioridade { get; init; }
     public Guid ProjetoId { get; init; }
-    public Guid ResponsavelId { get; init; }
+    public Guid ResponsavelUsuarioId { get; init; }
+    public string? ResponsavelNome { get; init; }
+    public string? ResponsavelEmail { get; init; }
+    public string? AreaNome { get; init; }
     public DateTime DataCriacao { get; init; }
     public DateTime DataPrazo { get; init; }
     public DateTime? DataConclusao { get; init; }

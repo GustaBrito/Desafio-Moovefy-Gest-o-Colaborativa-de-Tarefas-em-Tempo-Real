@@ -1,5 +1,6 @@
 using GerenciadorTarefas.Aplicacao.CasosDeUso.Projetos;
 using GerenciadorTarefas.Aplicacao.Modelos.Projetos;
+using GerenciadorTarefas.Dominio.Entidades;
 using GerenciadorTarefas.TestesUnitarios.Compartilhado;
 
 namespace GerenciadorTarefas.TestesUnitarios.Aplicacao.Projetos;
@@ -7,11 +8,20 @@ namespace GerenciadorTarefas.TestesUnitarios.Aplicacao.Projetos;
 public sealed class CriarProjetoCasoDeUsoTestes
 {
     private readonly RepositorioProjetoFalso repositorioProjeto = new();
+    private readonly RepositorioAreaFalso repositorioArea = new();
+    private readonly RepositorioUsuarioFalso repositorioUsuario = new();
+    private readonly Area areaPadrao = new()
+    {
+        Id = Guid.NewGuid(),
+        Nome = "Area Teste",
+        Ativa = true
+    };
     private readonly CriarProjetoCasoDeUso casoDeUso;
 
     public CriarProjetoCasoDeUsoTestes()
     {
-        casoDeUso = new CriarProjetoCasoDeUso(repositorioProjeto);
+        repositorioArea.Areas.Add(areaPadrao);
+        casoDeUso = new CriarProjetoCasoDeUso(repositorioProjeto, repositorioArea, repositorioUsuario);
     }
 
     [Fact]
@@ -71,7 +81,8 @@ public sealed class CriarProjetoCasoDeUsoTestes
         var entrada = new CriarProjetoEntrada
         {
             Nome = "  Projeto Estrategico  ",
-            Descricao = "  Descricao valida  "
+            Descricao = "  Descricao valida  ",
+            AreaId = areaPadrao.Id
         };
 
         var resposta = await casoDeUso.ExecutarAsync(entrada);
@@ -89,7 +100,8 @@ public sealed class CriarProjetoCasoDeUsoTestes
         var entrada = new CriarProjetoEntrada
         {
             Nome = "Projeto sem descricao",
-            Descricao = "   "
+            Descricao = "   ",
+            AreaId = areaPadrao.Id
         };
 
         var resposta = await casoDeUso.ExecutarAsync(entrada);

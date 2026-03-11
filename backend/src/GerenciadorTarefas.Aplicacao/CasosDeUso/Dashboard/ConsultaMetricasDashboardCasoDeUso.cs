@@ -14,9 +14,13 @@ public sealed class ConsultaMetricasDashboardCasoDeUso : IConsultaMetricasDashbo
         this.repositorioTarefa = repositorioTarefa;
     }
 
-    public async Task<MetricasDashboardResposta> ExecutarAsync(CancellationToken cancellationToken = default)
+    public async Task<MetricasDashboardResposta> ExecutarAsync(
+        IReadOnlyCollection<Guid>? areaIdsPermitidas = null,
+        CancellationToken cancellationToken = default)
     {
-        var tarefas = await repositorioTarefa.ListarTodasAsync(cancellationToken);
+        var tarefas = areaIdsPermitidas is null
+            ? await repositorioTarefa.ListarTodasAsync(cancellationToken)
+            : await repositorioTarefa.ListarTodasPorAreasAsync(areaIdsPermitidas, cancellationToken);
         var dataReferencia = DateTime.UtcNow;
 
         var totaisPorStatus = Enum

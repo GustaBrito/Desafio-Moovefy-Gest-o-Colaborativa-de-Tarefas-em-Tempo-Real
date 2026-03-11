@@ -8,13 +8,30 @@ namespace GerenciadorTarefas.TestesUnitarios.Aplicacao.Tarefas;
 
 public sealed class AtualizarTarefaCasoDeUsoTestes
 {
+    private readonly RepositorioProjetoFalso repositorioProjeto = new();
     private readonly RepositorioTarefaFalso repositorioTarefa = new();
+    private readonly RepositorioUsuarioFalso repositorioUsuario = new();
+    private readonly RepositorioAreaFalso repositorioArea = new();
+    private readonly RepositorioUsuarioAreaFalso repositorioUsuarioArea = new();
     private readonly NotificadorTempoRealTarefasFalso notificador = new();
+    private readonly Area areaPadrao = new()
+    {
+        Id = Guid.NewGuid(),
+        Nome = "Area Teste",
+        Ativa = true
+    };
     private readonly AtualizarTarefaCasoDeUso casoDeUso;
 
     public AtualizarTarefaCasoDeUsoTestes()
     {
-        casoDeUso = new AtualizarTarefaCasoDeUso(repositorioTarefa, notificador);
+        repositorioArea.Areas.Add(areaPadrao);
+        casoDeUso = new AtualizarTarefaCasoDeUso(
+            repositorioTarefa,
+            repositorioProjeto,
+            repositorioUsuario,
+            repositorioArea,
+            repositorioUsuarioArea,
+            notificador);
     }
 
     [Fact]
@@ -47,14 +64,14 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
         var tarefa = CriarTarefa(StatusTarefa.Pendente, Guid.NewGuid());
         repositorioTarefa.Tarefas.Add(tarefa);
 
-        var entrada = CriarEntradaValida(tarefa.ResponsavelId);
+        var entrada = CriarEntradaValida(tarefa.ResponsavelUsuarioId);
         entrada = new AtualizarTarefaEntrada
         {
             Titulo = " ",
             Descricao = entrada.Descricao,
             Status = entrada.Status,
             Prioridade = entrada.Prioridade,
-            ResponsavelId = entrada.ResponsavelId,
+            ResponsavelUsuarioId = entrada.ResponsavelUsuarioId,
             DataPrazo = entrada.DataPrazo
         };
 
@@ -75,7 +92,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
             Descricao = "Descricao",
             Status = StatusTarefa.EmAndamento,
             Prioridade = PrioridadeTarefa.Media,
-            ResponsavelId = tarefa.ResponsavelId,
+            ResponsavelUsuarioId = tarefa.ResponsavelUsuarioId,
             DataPrazo = DateTime.UtcNow.AddDays(3)
         };
 
@@ -96,7 +113,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
             Descricao = new string('x', 2001),
             Status = StatusTarefa.EmAndamento,
             Prioridade = PrioridadeTarefa.Media,
-            ResponsavelId = tarefa.ResponsavelId,
+            ResponsavelUsuarioId = tarefa.ResponsavelUsuarioId,
             DataPrazo = DateTime.UtcNow.AddDays(3)
         };
 
@@ -117,7 +134,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
             Descricao = "Descricao",
             Status = (StatusTarefa)999,
             Prioridade = PrioridadeTarefa.Media,
-            ResponsavelId = tarefa.ResponsavelId,
+            ResponsavelUsuarioId = tarefa.ResponsavelUsuarioId,
             DataPrazo = DateTime.UtcNow.AddDays(3)
         };
 
@@ -138,7 +155,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
             Descricao = "Descricao",
             Status = StatusTarefa.EmAndamento,
             Prioridade = (PrioridadeTarefa)999,
-            ResponsavelId = tarefa.ResponsavelId,
+            ResponsavelUsuarioId = tarefa.ResponsavelUsuarioId,
             DataPrazo = DateTime.UtcNow.AddDays(3)
         };
 
@@ -159,7 +176,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
             Descricao = "Descricao",
             Status = StatusTarefa.EmAndamento,
             Prioridade = PrioridadeTarefa.Media,
-            ResponsavelId = Guid.Empty,
+            ResponsavelUsuarioId = Guid.Empty,
             DataPrazo = DateTime.UtcNow.AddDays(3)
         };
 
@@ -180,7 +197,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
             Descricao = "Descricao",
             Status = StatusTarefa.EmAndamento,
             Prioridade = PrioridadeTarefa.Media,
-            ResponsavelId = tarefa.ResponsavelId,
+            ResponsavelUsuarioId = tarefa.ResponsavelUsuarioId,
             DataPrazo = DateTime.MinValue
         };
 
@@ -194,6 +211,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
     {
         var tarefa = CriarTarefa(StatusTarefa.Pendente, Guid.NewGuid());
         repositorioTarefa.Tarefas.Add(tarefa);
+        AdicionarContextoProjetoEUsuarios(tarefa.ProjetoId, tarefa.ResponsavelUsuarioId);
 
         var entrada = new AtualizarTarefaEntrada
         {
@@ -201,7 +219,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
             Descricao = "Descricao",
             Status = StatusTarefa.Concluida,
             Prioridade = PrioridadeTarefa.Media,
-            ResponsavelId = tarefa.ResponsavelId,
+            ResponsavelUsuarioId = tarefa.ResponsavelUsuarioId,
             DataPrazo = DateTime.UtcNow.AddDays(3)
         };
 
@@ -216,6 +234,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
         var responsavel = Guid.NewGuid();
         var tarefa = CriarTarefa(StatusTarefa.Pendente, responsavel);
         repositorioTarefa.Tarefas.Add(tarefa);
+        AdicionarContextoProjetoEUsuarios(tarefa.ProjetoId, responsavel);
 
         var resposta = await casoDeUso.ExecutarAsync(tarefa.Id, CriarEntradaValida(responsavel));
 
@@ -233,11 +252,12 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
         var novoResponsavel = Guid.NewGuid();
         var tarefa = CriarTarefa(StatusTarefa.Pendente, responsavelAnterior);
         repositorioTarefa.Tarefas.Add(tarefa);
+        AdicionarContextoProjetoEUsuarios(tarefa.ProjetoId, responsavelAnterior, novoResponsavel);
 
         await casoDeUso.ExecutarAsync(tarefa.Id, CriarEntradaValida(novoResponsavel));
 
         notificador.NotificacoesEnviadas.Should().ContainSingle();
-        notificador.NotificacoesEnviadas[0].ResponsavelId.Should().Be(novoResponsavel);
+        notificador.NotificacoesEnviadas[0].ResponsavelUsuarioId.Should().Be(novoResponsavel);
         notificador.NotificacoesEnviadas[0].Reatribuicao.Should().BeTrue();
     }
 
@@ -247,6 +267,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
         var responsavel = Guid.NewGuid();
         var tarefa = CriarTarefa(StatusTarefa.Pendente, responsavel);
         repositorioTarefa.Tarefas.Add(tarefa);
+        AdicionarContextoProjetoEUsuarios(tarefa.ProjetoId, responsavel);
 
         var entrada = new AtualizarTarefaEntrada
         {
@@ -254,7 +275,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
             Descricao = "   ",
             Status = StatusTarefa.EmAndamento,
             Prioridade = PrioridadeTarefa.Alta,
-            ResponsavelId = responsavel,
+            ResponsavelUsuarioId = responsavel,
             DataPrazo = DateTime.UtcNow.AddDays(2)
         };
 
@@ -264,7 +285,7 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
         tarefa.Descricao.Should().BeNull();
     }
 
-    private static AtualizarTarefaEntrada CriarEntradaValida(Guid responsavelId)
+    private static AtualizarTarefaEntrada CriarEntradaValida(Guid ResponsavelUsuarioId)
     {
         return new AtualizarTarefaEntrada
         {
@@ -272,12 +293,12 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
             Descricao = "  Descricao nova  ",
             Status = StatusTarefa.EmAndamento,
             Prioridade = PrioridadeTarefa.Urgente,
-            ResponsavelId = responsavelId,
+            ResponsavelUsuarioId = ResponsavelUsuarioId,
             DataPrazo = DateTime.UtcNow.AddDays(4)
         };
     }
 
-    private static Tarefa CriarTarefa(StatusTarefa status, Guid responsavelId)
+    private static Tarefa CriarTarefa(StatusTarefa status, Guid ResponsavelUsuarioId)
     {
         return new Tarefa
         {
@@ -287,9 +308,52 @@ public sealed class AtualizarTarefaCasoDeUsoTestes
             Status = status,
             Prioridade = PrioridadeTarefa.Media,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = responsavelId,
+            ResponsavelUsuarioId = ResponsavelUsuarioId,
             DataCriacao = DateTime.UtcNow.AddDays(-3),
             DataPrazo = DateTime.UtcNow.AddDays(5)
         };
+    }
+
+    private void AdicionarContextoProjetoEUsuarios(Guid projetoId, params Guid[] responsavelIds)
+    {
+        if (repositorioProjeto.Projetos.All(projeto => projeto.Id != projetoId))
+        {
+            repositorioProjeto.Projetos.Add(new Projeto
+            {
+                Id = projetoId,
+                Nome = "Projeto teste",
+                AreaId = areaPadrao.Id,
+                DataCriacao = DateTime.UtcNow.AddDays(-10)
+            });
+        }
+
+        foreach (var responsavelId in responsavelIds.Distinct())
+        {
+            if (repositorioUsuario.Usuarios.All(usuario => usuario.Id != responsavelId))
+            {
+                var usuario = new Usuario
+                {
+                    Id = responsavelId,
+                    Nome = $"Usuario {responsavelId:N}"[..14],
+                    Email = $"{responsavelId:N}@local",
+                    SenhaHash = "hash",
+                    Ativo = true,
+                    PerfilGlobal = PerfilGlobalUsuario.Colaborador,
+                    DataCriacao = DateTime.UtcNow.AddDays(-30)
+                };
+                repositorioUsuario.Usuarios.Add(usuario);
+                repositorioUsuarioArea.Usuarios.Add(usuario);
+            }
+
+            if (repositorioUsuarioArea.Vinculos.All(vinculo =>
+                vinculo.UsuarioId != responsavelId || vinculo.AreaId != areaPadrao.Id))
+            {
+                repositorioUsuarioArea.Vinculos.Add(new UsuarioArea
+                {
+                    UsuarioId = responsavelId,
+                    AreaId = areaPadrao.Id
+                });
+            }
+        }
     }
 }

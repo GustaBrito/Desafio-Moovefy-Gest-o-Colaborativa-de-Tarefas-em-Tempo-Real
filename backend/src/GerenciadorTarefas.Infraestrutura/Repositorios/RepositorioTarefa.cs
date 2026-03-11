@@ -23,6 +23,19 @@ public sealed class RepositorioTarefa : IRepositorioTarefa
             .AsNoTracking()
             .AsQueryable();
 
+        if (filtroConsulta.AreasProjetoPermitidas is not null)
+        {
+            if (filtroConsulta.AreasProjetoPermitidas.Count == 0)
+            {
+                return new ResultadoConsultaTarefas([], 0);
+            }
+
+            consulta = consulta.Where(tarefa =>
+                contextoBancoDados.Projetos.Any(projeto =>
+                    projeto.Id == tarefa.ProjetoId
+                    && filtroConsulta.AreasProjetoPermitidas.Contains(projeto.AreaId)));
+        }
+
         if (filtroConsulta.ProjetoId.HasValue)
         {
             consulta = consulta.Where(tarefa => tarefa.ProjetoId == filtroConsulta.ProjetoId.Value);
@@ -33,9 +46,10 @@ public sealed class RepositorioTarefa : IRepositorioTarefa
             consulta = consulta.Where(tarefa => tarefa.Status == filtroConsulta.Status.Value);
         }
 
-        if (filtroConsulta.ResponsavelId.HasValue)
+        if (filtroConsulta.ResponsavelUsuarioId.HasValue)
         {
-            consulta = consulta.Where(tarefa => tarefa.ResponsavelId == filtroConsulta.ResponsavelId.Value);
+            consulta = consulta.Where(tarefa =>
+                tarefa.ResponsavelUsuarioId == filtroConsulta.ResponsavelUsuarioId.Value);
         }
 
         if (filtroConsulta.DataPrazoInicial.HasValue)
@@ -70,6 +84,23 @@ public sealed class RepositorioTarefa : IRepositorioTarefa
     {
         return await contextoBancoDados.Tarefas
             .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<Tarefa>> ListarTodasPorAreasAsync(
+        IReadOnlyCollection<Guid> areaIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (areaIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await contextoBancoDados.Tarefas
+            .AsNoTracking()
+            .Where(tarefa => contextoBancoDados.Projetos.Any(projeto =>
+                projeto.Id == tarefa.ProjetoId
+                && areaIds.Contains(projeto.AreaId)))
             .ToListAsync(cancellationToken);
     }
 

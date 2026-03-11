@@ -1,16 +1,24 @@
 using GerenciadorTarefas.Aplicacao.Contratos.Projetos;
 using GerenciadorTarefas.Aplicacao.Modelos.Projetos;
 using GerenciadorTarefas.Dominio.Contratos;
+using GerenciadorTarefas.Dominio.Entidades;
 
 namespace GerenciadorTarefas.Aplicacao.CasosDeUso.Projetos;
 
 public sealed class AtualizarProjetoCasoDeUso : IAtualizarProjetoCasoDeUso
 {
     private readonly IRepositorioProjeto repositorioProjeto;
+    private readonly IRepositorioArea repositorioArea;
+    private readonly IRepositorioUsuario repositorioUsuario;
 
-    public AtualizarProjetoCasoDeUso(IRepositorioProjeto repositorioProjeto)
+    public AtualizarProjetoCasoDeUso(
+        IRepositorioProjeto repositorioProjeto,
+        IRepositorioArea repositorioArea,
+        IRepositorioUsuario repositorioUsuario)
     {
         this.repositorioProjeto = repositorioProjeto;
+        this.repositorioArea = repositorioArea;
+        this.repositorioUsuario = repositorioUsuario;
     }
 
     public async Task<ProjetoResposta> ExecutarAsync(
@@ -54,8 +62,31 @@ public sealed class AtualizarProjetoCasoDeUso : IAtualizarProjetoCasoDeUso
             throw new ArgumentException("A descricao do projeto deve ter no maximo 1000 caracteres.", nameof(entrada));
         }
 
+        if (entrada.AreaId == Guid.Empty)
+        {
+            throw new ArgumentException("A area do projeto deve ser informada.", nameof(entrada));
+        }
+
+        var area = await repositorioArea.ObterPorIdAsync(entrada.AreaId, cancellationToken);
+        if (area is null || !area.Ativa)
+        {
+            throw new InvalidOperationException("A area informada para o projeto e invalida ou inativa.");
+        }
+
+        Usuario? gestor = null;
+        if (entrada.GestorUsuarioId.HasValue)
+        {
+            gestor = await repositorioUsuario.ObterPorIdAsync(entrada.GestorUsuarioId.Value, cancellationToken);
+            if (gestor is null || !gestor.Ativo)
+            {
+                throw new InvalidOperationException("O gestor informado e invalido ou inativo.");
+            }
+        }
+
         projeto.Nome = nomeNormalizado;
         projeto.Descricao = descricaoNormalizada;
+        projeto.AreaId = entrada.AreaId;
+        projeto.GestorUsuarioId = entrada.GestorUsuarioId;
 
         repositorioProjeto.Atualizar(projeto);
         await repositorioProjeto.SalvarAlteracoesAsync(cancellationToken);
@@ -65,6 +96,10 @@ public sealed class AtualizarProjetoCasoDeUso : IAtualizarProjetoCasoDeUso
             Id = projeto.Id,
             Nome = projeto.Nome,
             Descricao = projeto.Descricao,
+            AreaId = projeto.AreaId,
+            AreaNome = area.Nome,
+            GestorUsuarioId = projeto.GestorUsuarioId,
+            GestorNome = gestor?.Nome,
             DataCriacao = projeto.DataCriacao
         };
     }

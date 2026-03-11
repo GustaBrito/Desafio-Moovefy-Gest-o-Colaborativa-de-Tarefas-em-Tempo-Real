@@ -19,7 +19,8 @@ public sealed class ConsultaHistoricoNotificacoesCasoDeUso : IConsultaHistoricoN
         ConsultaHistoricoNotificacoesEntrada? entrada = null,
         CancellationToken cancellationToken = default)
     {
-        if (entrada?.ResponsavelId.HasValue == true && entrada.ResponsavelId.Value == Guid.Empty)
+        if (entrada?.ResponsavelUsuarioId.HasValue == true
+            && entrada.ResponsavelUsuarioId.Value == Guid.Empty)
         {
             throw new ArgumentException(
                 "Quando informado, o identificador do responsavel deve ser valido.",
@@ -28,7 +29,7 @@ public sealed class ConsultaHistoricoNotificacoesCasoDeUso : IConsultaHistoricoN
 
         var limiteNormalizado = NormalizarLimite(entrada?.Limite ?? LimitePadrao);
         var notificacoes = await repositorioNotificacao.ListarRecentesAsync(
-            entrada?.ResponsavelId,
+            entrada?.ResponsavelUsuarioId,
             limiteNormalizado,
             cancellationToken);
 
@@ -36,7 +37,7 @@ public sealed class ConsultaHistoricoNotificacoesCasoDeUso : IConsultaHistoricoN
             .Select(notificacao => new NotificacaoResposta
             {
                 Id = notificacao.Id,
-                ResponsavelId = notificacao.ResponsavelId,
+                ResponsavelUsuarioId = notificacao.ResponsavelUsuarioId,
                 TarefaId = notificacao.TarefaId,
                 ProjetoId = notificacao.ProjetoId,
                 TituloTarefa = notificacao.TituloTarefa,

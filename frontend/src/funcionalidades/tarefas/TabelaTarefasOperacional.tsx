@@ -14,6 +14,9 @@ interface PropriedadesTabelaTarefasOperacional {
   carregandoAtualizacaoStatus: boolean;
   carregandoEdicao: boolean;
   carregandoExclusao: boolean;
+  permitirAlterarStatus?: boolean;
+  permitirEditar?: boolean;
+  permitirExcluir?: boolean;
   campoOrdenacao: CampoOrdenacaoTarefa;
   direcaoOrdenacao: DirecaoOrdenacaoTarefa;
   obterStatusPermitidos: (statusAtual: StatusTarefa) => StatusTarefa[];
@@ -47,6 +50,9 @@ export function TabelaTarefasOperacional({
   carregandoAtualizacaoStatus,
   carregandoEdicao,
   carregandoExclusao,
+  permitirAlterarStatus = true,
+  permitirEditar = true,
+  permitirExcluir = true,
   campoOrdenacao,
   direcaoOrdenacao,
   obterStatusPermitidos,
@@ -80,6 +86,8 @@ export function TabelaTarefasOperacional({
               </button>
             </th>
             <th>Projeto</th>
+            <th>Area</th>
+            <th>Responsavel</th>
             <th>
               <button
                 type="button"
@@ -136,6 +144,8 @@ export function TabelaTarefasOperacional({
                   </div>
                 </td>
                 <td>{mapaProjetos.get(tarefa.projetoId) ?? "Projeto nao encontrado"}</td>
+                <td>{tarefa.areaNome ?? "-"}</td>
+                <td>{tarefa.responsavelNome ?? tarefa.responsavelUsuarioId}</td>
                 <td>
                   <span className={`selo-prioridade selo-prioridade-${tarefa.prioridade}`}>
                     {nomesPrioridade[tarefa.prioridade]}
@@ -157,7 +167,7 @@ export function TabelaTarefasOperacional({
                       onChange={(evento) =>
                         aoAlterarStatus(tarefa, Number(evento.target.value) as StatusTarefa)
                       }
-                      disabled={carregandoAtualizacaoStatus}
+                      disabled={carregandoAtualizacaoStatus || !permitirAlterarStatus}
                     >
                       {Object.values(StatusTarefa)
                         .filter((valor) => typeof valor === "number")
@@ -179,7 +189,7 @@ export function TabelaTarefasOperacional({
                       type="button"
                       className="botao-secundario"
                       onClick={() => aoEditar(tarefa)}
-                      disabled={carregandoEdicao || carregandoExclusao}
+                      disabled={carregandoEdicao || carregandoExclusao || !permitirEditar}
                     >
                       Editar
                     </button>
@@ -188,7 +198,7 @@ export function TabelaTarefasOperacional({
                       type="button"
                       className="botao-perigo"
                       onClick={() => aoExcluir(tarefa)}
-                      disabled={carregandoExclusao || carregandoEdicao}
+                      disabled={carregandoExclusao || carregandoEdicao || !permitirExcluir}
                     >
                       Excluir
                     </button>

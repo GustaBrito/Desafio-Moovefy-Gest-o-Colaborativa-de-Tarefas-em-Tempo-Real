@@ -1,5 +1,7 @@
 using System.Text;
 using GerenciadorTarefas.Api.Modelos.Autenticacao;
+using GerenciadorTarefas.Api.Seguranca;
+using GerenciadorTarefas.Dominio.Enumeracoes;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -56,7 +58,25 @@ public static class ConfiguracaoAutenticacaoJwt
                 };
             });
 
-        servicos.AddAuthorization();
+        servicos.AddAuthorization(opcoes =>
+        {
+            opcoes.AddPolicy(PoliticasAutorizacao.ApenasSuperAdmin, politica =>
+            {
+                politica.RequireRole(PerfilGlobalUsuario.SuperAdmin.ToString());
+            });
+
+            opcoes.AddPolicy(PoliticasAutorizacao.AdministracaoUsuarios, politica =>
+            {
+                politica.RequireRole(
+                    PerfilGlobalUsuario.SuperAdmin.ToString(),
+                    PerfilGlobalUsuario.Admin.ToString());
+            });
+
+            opcoes.AddPolicy(PoliticasAutorizacao.AdministracaoAreas, politica =>
+            {
+                politica.RequireRole(PerfilGlobalUsuario.SuperAdmin.ToString());
+            });
+        });
 
         return servicos;
     }

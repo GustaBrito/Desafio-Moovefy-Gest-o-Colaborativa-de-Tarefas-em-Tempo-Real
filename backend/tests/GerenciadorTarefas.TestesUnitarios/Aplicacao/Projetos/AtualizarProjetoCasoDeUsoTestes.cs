@@ -8,11 +8,20 @@ namespace GerenciadorTarefas.TestesUnitarios.Aplicacao.Projetos;
 public sealed class AtualizarProjetoCasoDeUsoTestes
 {
     private readonly RepositorioProjetoFalso repositorioProjeto = new();
+    private readonly RepositorioAreaFalso repositorioArea = new();
+    private readonly RepositorioUsuarioFalso repositorioUsuario = new();
+    private readonly Area areaPadrao = new()
+    {
+        Id = Guid.NewGuid(),
+        Nome = "Area Teste",
+        Ativa = true
+    };
     private readonly AtualizarProjetoCasoDeUso casoDeUso;
 
     public AtualizarProjetoCasoDeUsoTestes()
     {
-        casoDeUso = new AtualizarProjetoCasoDeUso(repositorioProjeto);
+        repositorioArea.Areas.Add(areaPadrao);
+        casoDeUso = new AtualizarProjetoCasoDeUso(repositorioProjeto, repositorioArea, repositorioUsuario);
     }
 
     [Fact]
@@ -20,7 +29,8 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
     {
         var acao = async () => await casoDeUso.ExecutarAsync(Guid.Empty, new AtualizarProjetoEntrada
         {
-            Nome = "Projeto"
+            Nome = "Projeto",
+            AreaId = areaPadrao.Id
         });
 
         await acao.Should().ThrowAsync<ArgumentException>();
@@ -39,7 +49,8 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
     {
         var acao = async () => await casoDeUso.ExecutarAsync(Guid.NewGuid(), new AtualizarProjetoEntrada
         {
-            Nome = "Projeto"
+            Nome = "Projeto",
+            AreaId = areaPadrao.Id
         });
 
         await acao.Should().ThrowAsync<KeyNotFoundException>();
@@ -52,7 +63,8 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
         repositorioProjeto.Projetos.Add(new Projeto
         {
             Id = projetoId,
-            Nome = "Atual"
+            Nome = "Atual",
+            AreaId = areaPadrao.Id
         });
 
         var acao = async () => await casoDeUso.ExecutarAsync(projetoId, new AtualizarProjetoEntrada
@@ -70,7 +82,8 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
         repositorioProjeto.Projetos.Add(new Projeto
         {
             Id = projetoId,
-            Nome = "Atual"
+            Nome = "Atual",
+            AreaId = areaPadrao.Id
         });
 
         var acao = async () => await casoDeUso.ExecutarAsync(projetoId, new AtualizarProjetoEntrada
@@ -88,13 +101,15 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
         repositorioProjeto.Projetos.Add(new Projeto
         {
             Id = projetoId,
-            Nome = "Atual"
+            Nome = "Atual",
+            AreaId = areaPadrao.Id
         });
 
         var acao = async () => await casoDeUso.ExecutarAsync(projetoId, new AtualizarProjetoEntrada
         {
             Nome = "Projeto valido",
-            Descricao = new string('x', 1001)
+            Descricao = new string('x', 1001),
+            AreaId = areaPadrao.Id
         });
 
         await acao.Should().ThrowAsync<ArgumentException>();
@@ -108,6 +123,7 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
             Id = Guid.NewGuid(),
             Nome = "Projeto atual",
             Descricao = "Descricao anterior",
+            AreaId = areaPadrao.Id,
             DataCriacao = DateTime.UtcNow.AddDays(-10)
         };
         repositorioProjeto.Projetos.Add(projeto);
@@ -115,7 +131,8 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
         var resposta = await casoDeUso.ExecutarAsync(projeto.Id, new AtualizarProjetoEntrada
         {
             Nome = "  Projeto novo  ",
-            Descricao = "  Nova descricao  "
+            Descricao = "  Nova descricao  ",
+            AreaId = areaPadrao.Id
         });
 
         resposta.Id.Should().Be(projeto.Id);
@@ -133,6 +150,7 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
             Id = Guid.NewGuid(),
             Nome = "Projeto A",
             Descricao = "Descricao antiga",
+            AreaId = areaPadrao.Id,
             DataCriacao = DateTime.UtcNow.AddDays(-2)
         };
         repositorioProjeto.Projetos.Add(projeto);
@@ -140,7 +158,8 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
         var resposta = await casoDeUso.ExecutarAsync(projeto.Id, new AtualizarProjetoEntrada
         {
             Nome = "Projeto A Atualizado",
-            Descricao = "   "
+            Descricao = "   ",
+            AreaId = areaPadrao.Id
         });
 
         resposta.Descricao.Should().BeNull();

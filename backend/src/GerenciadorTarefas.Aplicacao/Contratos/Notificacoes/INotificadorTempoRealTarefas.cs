@@ -3,7 +3,7 @@ namespace GerenciadorTarefas.Aplicacao.Contratos.Notificacoes;
 public interface INotificadorTempoRealTarefas
 {
     Task NotificarAtribuicaoAsync(
-        Guid responsavelId,
+        Guid responsavelUsuarioId,
         Guid tarefaId,
         Guid projetoId,
         string tituloTarefa,

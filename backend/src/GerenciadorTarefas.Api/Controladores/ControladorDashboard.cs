@@ -1,6 +1,7 @@
 using GerenciadorTarefas.Aplicacao.Contratos.Dashboard;
 using GerenciadorTarefas.Aplicacao.Modelos.Dashboard;
 using GerenciadorTarefas.Api.Contratos.Respostas;
+using GerenciadorTarefas.Api.Seguranca;
 using GerenciadorTarefas.Api.Servicos.Cache;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,10 +29,13 @@ public sealed class ControladorDashboard : ControllerBase
     public async Task<ActionResult<RespostaSucessoApi<MetricasDashboardResposta>>> ObterMetricasAsync(
         CancellationToken cancellationToken)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
         var metricas = await servicoCacheConsulta.ObterOuCriarAsync(
-            ChavesCacheConsulta.ObterMetricasDashboard(),
+            $"{ChavesCacheConsulta.ObterMetricasDashboard()}:u:{contextoUsuario.UsuarioId:N}",
             PoliticasCacheConsulta.DuracaoDashboard,
-            _ => consultaMetricasDashboardCasoDeUso.ExecutarAsync(cancellationToken),
+            _ => consultaMetricasDashboardCasoDeUso.ExecutarAsync(
+                contextoUsuario.EhSuperAdmin ? null : contextoUsuario.AreaIds,
+                cancellationToken),
             cancellationToken);
 
         var resposta = new RespostaSucessoApi<MetricasDashboardResposta>

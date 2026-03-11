@@ -13,8 +13,8 @@ internal static class ClienteApiTeste
 
     public static async Task<string> ObterTokenAsync(
         HttpClient cliente,
-        string email = "admin@gerenciadortarefas.local",
-        string senha = "Admin@123")
+        string email = "superadmin@gerenciadortarefas.local",
+        string senha = "SuperAdmin@123")
     {
         var resposta = await cliente.PostAsJsonAsync("/api/autenticacao/login", new
         {

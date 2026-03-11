@@ -8,6 +8,6 @@ public sealed class AtualizarTarefaRequisicao
     public string? Descricao { get; set; }
     public StatusTarefa Status { get; set; }
     public PrioridadeTarefa Prioridade { get; set; }
-    public Guid ResponsavelId { get; set; }
+    public Guid ResponsavelUsuarioId { get; set; }
     public DateTime DataPrazo { get; set; }
 }

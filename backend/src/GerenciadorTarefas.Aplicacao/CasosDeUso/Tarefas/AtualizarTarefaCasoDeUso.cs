@@ -8,13 +8,25 @@ namespace GerenciadorTarefas.Aplicacao.CasosDeUso.Tarefas;
 public sealed class AtualizarTarefaCasoDeUso : IAtualizarTarefaCasoDeUso
 {
     private readonly IRepositorioTarefa repositorioTarefa;
+    private readonly IRepositorioProjeto repositorioProjeto;
+    private readonly IRepositorioUsuario repositorioUsuario;
+    private readonly IRepositorioArea repositorioArea;
+    private readonly IRepositorioUsuarioArea repositorioUsuarioArea;
     private readonly INotificadorTempoRealTarefas notificadorTempoRealTarefas;
 
     public AtualizarTarefaCasoDeUso(
         IRepositorioTarefa repositorioTarefa,
+        IRepositorioProjeto repositorioProjeto,
+        IRepositorioUsuario repositorioUsuario,
+        IRepositorioArea repositorioArea,
+        IRepositorioUsuarioArea repositorioUsuarioArea,
         INotificadorTempoRealTarefas notificadorTempoRealTarefas)
     {
         this.repositorioTarefa = repositorioTarefa;
+        this.repositorioProjeto = repositorioProjeto;
+        this.repositorioUsuario = repositorioUsuario;
+        this.repositorioArea = repositorioArea;
+        this.repositorioUsuarioArea = repositorioUsuarioArea;
         this.notificadorTempoRealTarefas = notificadorTempoRealTarefas;
     }
 
@@ -69,7 +81,7 @@ public sealed class AtualizarTarefaCasoDeUso : IAtualizarTarefaCasoDeUso
             throw new ArgumentException("A prioridade informada e invalida.", nameof(entrada));
         }
 
-        if (entrada.ResponsavelId == Guid.Empty)
+        if (entrada.ResponsavelUsuarioId == Guid.Empty)
         {
             throw new ArgumentException("O identificador do responsavel deve ser informado.", nameof(entrada));
         }
@@ -79,30 +91,60 @@ public sealed class AtualizarTarefaCasoDeUso : IAtualizarTarefaCasoDeUso
             throw new ArgumentException("A data de prazo da tarefa deve ser informada.", nameof(entrada));
         }
 
+        var projeto = await repositorioProjeto.ObterPorIdAsync(tarefa.ProjetoId, cancellationToken);
+        if (projeto is null)
+        {
+            throw new KeyNotFoundException($"Projeto com id '{tarefa.ProjetoId}' nao foi encontrado.");
+        }
+
+        var responsavel = await repositorioUsuario.ObterPorIdAsync(entrada.ResponsavelUsuarioId, cancellationToken);
+        if (responsavel is null)
+        {
+            throw new ArgumentException("O responsavel informado nao existe.", nameof(entrada));
+        }
+
+        if (!responsavel.Ativo)
+        {
+            throw new InvalidOperationException("Nao e permitido atribuir tarefas para usuario inativo.");
+        }
+
+        var pertenceAreaProjeto = await repositorioUsuarioArea.UsuarioPertenceAreaAsync(
+            responsavel.Id,
+            projeto.AreaId,
+            cancellationToken);
+
+        if (!pertenceAreaProjeto)
+        {
+            throw new InvalidOperationException(
+                "O responsavel da tarefa deve pertencer a area do projeto.");
+        }
+
         var dataAtual = DateTime.UtcNow;
 
-        var responsavelAnterior = tarefa.ResponsavelId;
+        var responsavelAnterior = tarefa.ResponsavelUsuarioId;
 
         tarefa.Titulo = tituloNormalizado;
         tarefa.Descricao = descricaoNormalizada;
         tarefa.AtualizarStatus(entrada.Status, dataAtual);
         tarefa.Prioridade = entrada.Prioridade;
-        tarefa.ResponsavelId = entrada.ResponsavelId;
+        tarefa.ResponsavelUsuarioId = entrada.ResponsavelUsuarioId;
         tarefa.DataPrazo = entrada.DataPrazo;
 
         repositorioTarefa.Atualizar(tarefa);
         await repositorioTarefa.SalvarAlteracoesAsync(cancellationToken);
 
-        if (responsavelAnterior != tarefa.ResponsavelId)
+        if (responsavelAnterior != tarefa.ResponsavelUsuarioId)
         {
             await notificadorTempoRealTarefas.NotificarAtribuicaoAsync(
-                tarefa.ResponsavelId,
+                tarefa.ResponsavelUsuarioId,
                 tarefa.Id,
                 tarefa.ProjetoId,
                 tarefa.Titulo,
                 reatribuicao: true,
                 cancellationToken);
         }
+
+        var area = await repositorioArea.ObterPorIdAsync(projeto.AreaId, cancellationToken);
 
         return new TarefaResposta
         {
@@ -112,7 +154,10 @@ public sealed class AtualizarTarefaCasoDeUso : IAtualizarTarefaCasoDeUso
             Status = tarefa.Status,
             Prioridade = tarefa.Prioridade,
             ProjetoId = tarefa.ProjetoId,
-            ResponsavelId = tarefa.ResponsavelId,
+            ResponsavelUsuarioId = tarefa.ResponsavelUsuarioId,
+            ResponsavelNome = responsavel.Nome,
+            ResponsavelEmail = responsavel.Email,
+            AreaNome = area?.Nome,
             DataCriacao = tarefa.DataCriacao,
             DataPrazo = tarefa.DataPrazo,
             DataConclusao = tarefa.DataConclusao,

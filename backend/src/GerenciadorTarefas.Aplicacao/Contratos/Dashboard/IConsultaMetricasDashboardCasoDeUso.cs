@@ -4,5 +4,7 @@ namespace GerenciadorTarefas.Aplicacao.Contratos.Dashboard;
 
 public interface IConsultaMetricasDashboardCasoDeUso
 {
-    Task<MetricasDashboardResposta> ExecutarAsync(CancellationToken cancellationToken = default);
+    Task<MetricasDashboardResposta> ExecutarAsync(
+        IReadOnlyCollection<Guid>? areaIdsPermitidas = null,
+        CancellationToken cancellationToken = default);
 }

@@ -8,12 +8,19 @@ namespace GerenciadorTarefas.TestesUnitarios.Aplicacao.Tarefas;
 
 public sealed class AtualizarStatusTarefaCasoDeUsoTestes
 {
+    private readonly RepositorioProjetoFalso repositorioProjeto = new();
     private readonly RepositorioTarefaFalso repositorioTarefa = new();
+    private readonly RepositorioUsuarioFalso repositorioUsuario = new();
+    private readonly RepositorioAreaFalso repositorioArea = new();
     private readonly AtualizarStatusTarefaCasoDeUso casoDeUso;
 
     public AtualizarStatusTarefaCasoDeUsoTestes()
     {
-        casoDeUso = new AtualizarStatusTarefaCasoDeUso(repositorioTarefa);
+        casoDeUso = new AtualizarStatusTarefaCasoDeUso(
+            repositorioTarefa,
+            repositorioProjeto,
+            repositorioUsuario,
+            repositorioArea);
     }
 
     [Fact]
@@ -97,7 +104,7 @@ public sealed class AtualizarStatusTarefaCasoDeUsoTestes
             Status = status,
             Prioridade = PrioridadeTarefa.Media,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
             DataCriacao = DateTime.UtcNow.AddDays(-2),
             DataPrazo = DateTime.UtcNow.AddDays(2)
         };

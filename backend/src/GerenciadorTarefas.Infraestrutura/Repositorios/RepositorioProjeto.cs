@@ -14,10 +14,25 @@ public sealed class RepositorioProjeto : IRepositorioProjeto
         this.contextoBancoDados = contextoBancoDados;
     }
 
-    public async Task<IReadOnlyCollection<Projeto>> ListarAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<Projeto>> ListarAsync(
+        IReadOnlyCollection<Guid>? areaIdsPermitidas = null,
+        CancellationToken cancellationToken = default)
     {
-        return await contextoBancoDados.Projetos
+        var consulta = contextoBancoDados.Projetos
             .AsNoTracking()
+            .AsQueryable();
+
+        if (areaIdsPermitidas is not null)
+        {
+            if (areaIdsPermitidas.Count == 0)
+            {
+                return [];
+            }
+
+            consulta = consulta.Where(projeto => areaIdsPermitidas.Contains(projeto.AreaId));
+        }
+
+        return await consulta
             .OrderBy(projeto => projeto.Nome)
             .ToListAsync(cancellationToken);
     }
@@ -27,6 +42,21 @@ public sealed class RepositorioProjeto : IRepositorioProjeto
         return await contextoBancoDados.Projetos
             .AsNoTracking()
             .FirstOrDefaultAsync(projeto => projeto.Id == id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<Projeto>> ObterPorIdsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken = default)
+    {
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        return await contextoBancoDados.Projetos
+            .AsNoTracking()
+            .Where(projeto => ids.Contains(projeto.Id))
+            .ToListAsync(cancellationToken);
     }
 
     public async Task AdicionarAsync(Projeto projeto, CancellationToken cancellationToken = default)

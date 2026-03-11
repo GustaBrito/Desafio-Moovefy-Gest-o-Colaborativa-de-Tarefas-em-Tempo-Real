@@ -9,12 +9,19 @@ namespace GerenciadorTarefas.TestesUnitarios.Aplicacao.Tarefas;
 
 public sealed class ConsultaTarefasCasoDeUsoTestes
 {
+    private readonly RepositorioProjetoFalso repositorioProjeto = new();
     private readonly RepositorioTarefaFalso repositorioTarefa = new();
+    private readonly RepositorioUsuarioFalso repositorioUsuario = new();
+    private readonly RepositorioAreaFalso repositorioArea = new();
     private readonly ConsultaTarefasCasoDeUso casoDeUso;
 
     public ConsultaTarefasCasoDeUsoTestes()
     {
-        casoDeUso = new ConsultaTarefasCasoDeUso(repositorioTarefa);
+        casoDeUso = new ConsultaTarefasCasoDeUso(
+            repositorioTarefa,
+            repositorioProjeto,
+            repositorioUsuario,
+            repositorioArea);
     }
 
     [Fact]
@@ -67,11 +74,11 @@ public sealed class ConsultaTarefasCasoDeUsoTestes
     }
 
     [Fact]
-    public async Task ListarAsync_DeveLancarExcecao_QuandoResponsavelIdForGuidVazio()
+    public async Task ListarAsync_DeveLancarExcecao_QuandoResponsavelUsuarioIdForGuidVazio()
     {
         var filtro = new FiltroConsultaTarefasEntrada
         {
-            ResponsavelId = Guid.Empty
+            ResponsavelUsuarioId = Guid.Empty
         };
 
         var acao = async () => await casoDeUso.ListarAsync(filtro);
@@ -84,7 +91,7 @@ public sealed class ConsultaTarefasCasoDeUsoTestes
     public async Task ListarAsync_DeveReplicarFiltrosValidosNoRepositorio()
     {
         var projetoId = Guid.NewGuid();
-        var responsavelId = Guid.NewGuid();
+        var ResponsavelUsuarioId = Guid.NewGuid();
         var dataInicial = DateTime.UtcNow.Date;
         var dataFinal = dataInicial.AddDays(3);
 
@@ -94,7 +101,7 @@ public sealed class ConsultaTarefasCasoDeUsoTestes
         {
             ProjetoId = projetoId,
             Status = StatusTarefa.EmAndamento,
-            ResponsavelId = responsavelId,
+            ResponsavelUsuarioId = ResponsavelUsuarioId,
             DataPrazoInicial = dataInicial,
             DataPrazoFinal = dataFinal,
             CampoOrdenacao = CampoOrdenacaoTarefa.DataPrazo,
@@ -106,7 +113,7 @@ public sealed class ConsultaTarefasCasoDeUsoTestes
         repositorioTarefa.UltimoFiltroListagem.Should().NotBeNull();
         repositorioTarefa.UltimoFiltroListagem!.ProjetoId.Should().Be(projetoId);
         repositorioTarefa.UltimoFiltroListagem.Status.Should().Be(StatusTarefa.EmAndamento);
-        repositorioTarefa.UltimoFiltroListagem.ResponsavelId.Should().Be(responsavelId);
+        repositorioTarefa.UltimoFiltroListagem.ResponsavelUsuarioId.Should().Be(ResponsavelUsuarioId);
         repositorioTarefa.UltimoFiltroListagem.DataPrazoInicial.Should().Be(dataInicial);
         repositorioTarefa.UltimoFiltroListagem.DataPrazoFinal.Should().Be(dataFinal);
         repositorioTarefa.UltimoFiltroListagem.CampoOrdenacao.Should().Be(CampoOrdenacaoTarefa.DataPrazo);
@@ -152,7 +159,7 @@ public sealed class ConsultaTarefasCasoDeUsoTestes
             Status = status,
             Prioridade = PrioridadeTarefa.Alta,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
             DataCriacao = DateTime.UtcNow.AddDays(-3),
             DataPrazo = dataPrazo
         };

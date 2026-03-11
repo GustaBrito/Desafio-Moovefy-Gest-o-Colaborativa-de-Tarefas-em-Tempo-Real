@@ -16,5 +16,9 @@ public sealed class ValidadorCriarProjetoRequisicao : AbstractValidator<CriarPro
         RuleFor(requisicao => requisicao.Descricao)
             .MaximumLength(1000)
             .WithMessage("A descricao do projeto deve ter no maximo 1000 caracteres.");
+
+        RuleFor(requisicao => requisicao.AreaId)
+            .NotEmpty()
+            .WithMessage("A area do projeto deve ser informada.");
     }
 }

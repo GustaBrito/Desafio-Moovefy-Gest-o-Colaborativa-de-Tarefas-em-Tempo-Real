@@ -1,14 +1,17 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormularioProjeto } from "../funcionalidades/projetos/FormularioProjeto";
+import { usarAutenticacao } from "../ganchos/usarAutenticacao";
 import { usarNotificacao } from "../ganchos/usarNotificacao";
+import { listarAreas } from "../servicos/servicoAreas";
 import {
   atualizarProjeto,
   criarProjeto,
   excluirProjeto,
   listarProjetos,
 } from "../servicos/servicoProjetos";
-import type { CriarProjetoRequisicao, ProjetoResposta } from "../tipos/projetos";
+import { listarUsuarios } from "../servicos/servicoUsuarios";
+import type { AtualizarProjetoRequisicao, CriarProjetoRequisicao, ProjetoResposta } from "../tipos/projetos";
 
 type CriterioOrdenacaoProjeto =
   | "nome_ascendente"
@@ -18,6 +21,7 @@ type CriterioOrdenacaoProjeto =
 
 export function PaginaProjetos(): JSX.Element {
   const clienteConsulta = useQueryClient();
+  const { ehColaborador } = usarAutenticacao();
   const { mostrarErro, mostrarSucesso } = usarNotificacao();
   const [projetoEmEdicao, setProjetoEmEdicao] = useState<ProjetoResposta | null>(null);
   const [textoBusca, setTextoBusca] = useState("");
@@ -28,6 +32,19 @@ export function PaginaProjetos(): JSX.Element {
   const consultaProjetos = useQuery({
     queryKey: ["projetos"],
     queryFn: listarProjetos,
+  });
+
+  const consultaAreas = useQuery({
+    queryKey: ["areas", "ativas"],
+    queryFn: () => listarAreas(true),
+    staleTime: 120000,
+  });
+
+  const consultaUsuarios = useQuery({
+    queryKey: ["usuarios", "ativos"],
+    queryFn: () => listarUsuarios(true),
+    enabled: !ehColaborador,
+    staleTime: 120000,
   });
 
   const mutacaoCriarProjeto = useMutation({
@@ -42,7 +59,7 @@ export function PaginaProjetos(): JSX.Element {
   });
 
   const mutacaoAtualizarProjeto = useMutation({
-    mutationFn: ({ id, dados }: { id: string; dados: CriarProjetoRequisicao }) =>
+    mutationFn: ({ id, dados }: { id: string; dados: AtualizarProjetoRequisicao }) =>
       atualizarProjeto(id, dados),
     onSuccess: async () => {
       await clienteConsulta.invalidateQueries({ queryKey: ["projetos"] });
@@ -65,6 +82,11 @@ export function PaginaProjetos(): JSX.Element {
   });
 
   async function enviarProjeto(dados: CriarProjetoRequisicao): Promise<void> {
+    if (ehColaborador) {
+      mostrarErro("Colaborador nao pode criar ou editar projetos.");
+      return;
+    }
+
     if (projetoEmEdicao) {
       await mutacaoAtualizarProjeto.mutateAsync({ id: projetoEmEdicao.id, dados });
       setProjetoEmEdicao(null);
@@ -75,6 +97,11 @@ export function PaginaProjetos(): JSX.Element {
   }
 
   async function excluirProjetoComConfirmacao(id: string, nome: string): Promise<void> {
+    if (ehColaborador) {
+      mostrarErro("Colaborador nao pode excluir projetos.");
+      return;
+    }
+
     const confirmouExclusao = window.confirm(
       `Deseja realmente excluir o projeto "${nome}"?`
     );
@@ -310,26 +337,48 @@ export function PaginaProjetos(): JSX.Element {
       </article>
 
       <div className="grade-duas-colunas grade-projetos-principal">
-        <FormularioProjeto
-          emEnvio={mutacaoCriarProjeto.isPending || mutacaoAtualizarProjeto.isPending}
-          aoEnviar={enviarProjeto}
-          valoresIniciais={
-            projetoEmEdicao
-              ? {
-                  nome: projetoEmEdicao.nome,
-                  descricao: projetoEmEdicao.descricao ?? "",
-                }
-              : undefined
-          }
-          titulo={projetoEmEdicao ? "Editar projeto" : "Novo projeto"}
-          rotuloBotao={projetoEmEdicao ? "Atualizar projeto" : "Salvar projeto"}
-          rotuloBotaoEmEnvio={
-            projetoEmEdicao ? "Atualizando..." : "Salvando..."
-          }
-          aoCancelarEdicao={
-            projetoEmEdicao ? () => setProjetoEmEdicao(null) : undefined
-          }
-        />
+        {!ehColaborador ? (
+          <FormularioProjeto
+            areas={consultaAreas.data ?? []}
+            gestores={(consultaUsuarios.data ?? []).map((usuario) => ({
+              id: usuario.id,
+              nome: usuario.nome,
+              email: usuario.email,
+            }))}
+            emEnvio={mutacaoCriarProjeto.isPending || mutacaoAtualizarProjeto.isPending}
+            aoEnviar={async (dados) =>
+              enviarProjeto({
+                nome: dados.nome,
+                descricao: dados.descricao || null,
+                areaId: dados.areaId,
+                gestorUsuarioId: dados.gestorUsuarioId || null,
+              })
+            }
+            valoresIniciais={
+              projetoEmEdicao
+                ? {
+                    nome: projetoEmEdicao.nome,
+                    descricao: projetoEmEdicao.descricao ?? "",
+                    areaId: projetoEmEdicao.areaId,
+                    gestorUsuarioId: projetoEmEdicao.gestorUsuarioId ?? null,
+                  }
+                : undefined
+            }
+            titulo={projetoEmEdicao ? "Editar projeto" : "Novo projeto"}
+            rotuloBotao={projetoEmEdicao ? "Atualizar projeto" : "Salvar projeto"}
+            rotuloBotaoEmEnvio={
+              projetoEmEdicao ? "Atualizando..." : "Salvando..."
+            }
+            aoCancelarEdicao={
+              projetoEmEdicao ? () => setProjetoEmEdicao(null) : undefined
+            }
+          />
+        ) : (
+          <article className="cartao-listagem">
+            <h3>Permissao de colaborador</h3>
+            <p>Seu perfil possui acesso somente de visualizacao para projetos.</p>
+          </article>
+        )}
 
         <article className="cartao-listagem cartao-listagem-projetos">
           <header className="cabecalho-listagem-projetos">
@@ -401,6 +450,7 @@ export function PaginaProjetos(): JSX.Element {
                   <div className="conteudo-item-listagem">
                     <div className="topo-item-projeto">
                       <strong>{projeto.nome}</strong>
+                      <span className="selo-sucesso-projeto">{projeto.areaNome}</span>
                       {projeto.descricao && projeto.descricao.trim().length > 0 ? (
                         <span className="selo-sucesso-projeto">Descricao registrada</span>
                       ) : (
@@ -410,6 +460,7 @@ export function PaginaProjetos(): JSX.Element {
 
                     <span>{projeto.descricao || "Sem descricao."}</span>
                     <small>Criado em {formatarDataHora(projeto.dataCriacao)}</small>
+                    {projeto.gestorNome && <small>Gestor: {projeto.gestorNome}</small>}
                   </div>
 
                   <div className="acoes-item-listagem">
@@ -417,7 +468,7 @@ export function PaginaProjetos(): JSX.Element {
                       type="button"
                       className="botao-secundario"
                       onClick={() => setProjetoEmEdicao(projeto)}
-                      disabled={mutacaoExcluirProjeto.isPending}
+                      disabled={mutacaoExcluirProjeto.isPending || ehColaborador}
                     >
                       Editar
                     </button>
@@ -426,7 +477,7 @@ export function PaginaProjetos(): JSX.Element {
                       type="button"
                       className="botao-perigo"
                       onClick={() => excluirProjetoComConfirmacao(projeto.id, projeto.nome)}
-                      disabled={mutacaoExcluirProjeto.isPending}
+                      disabled={mutacaoExcluirProjeto.isPending || ehColaborador}
                     >
                       Excluir
                     </button>

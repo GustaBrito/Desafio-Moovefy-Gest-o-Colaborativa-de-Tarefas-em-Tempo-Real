@@ -10,10 +10,13 @@ public class Tarefa
     public StatusTarefa Status { get; set; } = StatusTarefa.Pendente;
     public PrioridadeTarefa Prioridade { get; set; } = PrioridadeTarefa.Media;
     public Guid ProjetoId { get; set; }
-    public Guid ResponsavelId { get; set; }
+    public Guid ResponsavelUsuarioId { get; set; }
     public DateTime DataCriacao { get; set; }
     public DateTime DataPrazo { get; set; }
     public DateTime? DataConclusao { get; set; }
+
+    public Projeto? Projeto { get; set; }
+    public Usuario? ResponsavelUsuario { get; set; }
 
     public bool EstaAtrasada(DateTime dataReferencia)
     {

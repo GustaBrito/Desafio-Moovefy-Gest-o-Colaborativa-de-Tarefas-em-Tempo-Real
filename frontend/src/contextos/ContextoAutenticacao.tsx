@@ -11,11 +11,17 @@ import {
   removerSessao,
   salvarSessao,
 } from "../servicos/servicoSessao";
-import type { SessaoAutenticacao } from "../tipos/autenticacao";
+import {
+  PerfilGlobalUsuario,
+  type SessaoAutenticacao,
+} from "../tipos/autenticacao";
 
 export interface ValorContextoAutenticacao {
   sessao: SessaoAutenticacao | null;
   estaAutenticado: boolean;
+  ehSuperAdmin: boolean;
+  ehAdmin: boolean;
+  ehColaborador: boolean;
   realizarLogin: (
     email: string,
     senha: string,
@@ -43,7 +49,8 @@ export function ProvedorAutenticacao({
         usuarioId: respostaLogin.usuarioId,
         nome: respostaLogin.nome,
         email: respostaLogin.email,
-        perfil: respostaLogin.perfil,
+        perfilGlobal: respostaLogin.perfilGlobal,
+        areaIds: respostaLogin.areaIds ?? [],
         tokenAcesso: respostaLogin.tokenAcesso,
         tipoToken: respostaLogin.tipoToken,
         expiraEmUtc: respostaLogin.expiraEmUtc,
@@ -64,6 +71,9 @@ export function ProvedorAutenticacao({
     () => ({
       sessao,
       estaAutenticado: Boolean(sessao?.tokenAcesso),
+      ehSuperAdmin: sessao?.perfilGlobal === PerfilGlobalUsuario.SuperAdmin,
+      ehAdmin: sessao?.perfilGlobal === PerfilGlobalUsuario.Admin,
+      ehColaborador: sessao?.perfilGlobal === PerfilGlobalUsuario.Colaborador,
       realizarLogin,
       realizarLogout,
     }),

@@ -11,15 +11,24 @@ public sealed class CriarTarefaCasoDeUso : ICriarTarefaCasoDeUso
 {
     private readonly IRepositorioProjeto repositorioProjeto;
     private readonly IRepositorioTarefa repositorioTarefa;
+    private readonly IRepositorioUsuario repositorioUsuario;
+    private readonly IRepositorioArea repositorioArea;
+    private readonly IRepositorioUsuarioArea repositorioUsuarioArea;
     private readonly INotificadorTempoRealTarefas notificadorTempoRealTarefas;
 
     public CriarTarefaCasoDeUso(
         IRepositorioProjeto repositorioProjeto,
         IRepositorioTarefa repositorioTarefa,
+        IRepositorioUsuario repositorioUsuario,
+        IRepositorioArea repositorioArea,
+        IRepositorioUsuarioArea repositorioUsuarioArea,
         INotificadorTempoRealTarefas notificadorTempoRealTarefas)
     {
         this.repositorioProjeto = repositorioProjeto;
         this.repositorioTarefa = repositorioTarefa;
+        this.repositorioUsuario = repositorioUsuario;
+        this.repositorioArea = repositorioArea;
+        this.repositorioUsuarioArea = repositorioUsuarioArea;
         this.notificadorTempoRealTarefas = notificadorTempoRealTarefas;
     }
 
@@ -37,7 +46,7 @@ public sealed class CriarTarefaCasoDeUso : ICriarTarefaCasoDeUso
             throw new ArgumentException("O identificador do projeto deve ser informado.", nameof(entrada));
         }
 
-        if (entrada.ResponsavelId == Guid.Empty)
+        if (entrada.ResponsavelUsuarioId == Guid.Empty)
         {
             throw new ArgumentException("O identificador do responsavel deve ser informado.", nameof(entrada));
         }
@@ -78,6 +87,28 @@ public sealed class CriarTarefaCasoDeUso : ICriarTarefaCasoDeUso
             throw new KeyNotFoundException($"Projeto com id '{entrada.ProjetoId}' nao foi encontrado.");
         }
 
+        var responsavel = await repositorioUsuario.ObterPorIdAsync(entrada.ResponsavelUsuarioId, cancellationToken);
+        if (responsavel is null)
+        {
+            throw new ArgumentException("O responsavel informado nao existe.", nameof(entrada));
+        }
+
+        if (!responsavel.Ativo)
+        {
+            throw new InvalidOperationException("Nao e permitido atribuir tarefas para usuario inativo.");
+        }
+
+        var pertenceAreaProjeto = await repositorioUsuarioArea.UsuarioPertenceAreaAsync(
+            responsavel.Id,
+            projeto.AreaId,
+            cancellationToken);
+
+        if (!pertenceAreaProjeto)
+        {
+            throw new InvalidOperationException(
+                "O responsavel da tarefa deve pertencer a area do projeto.");
+        }
+
         var dataAtual = DateTime.UtcNow;
         var tarefa = new Tarefa
         {
@@ -87,7 +118,7 @@ public sealed class CriarTarefaCasoDeUso : ICriarTarefaCasoDeUso
             Status = StatusTarefa.Pendente,
             Prioridade = entrada.Prioridade,
             ProjetoId = entrada.ProjetoId,
-            ResponsavelId = entrada.ResponsavelId,
+            ResponsavelUsuarioId = entrada.ResponsavelUsuarioId,
             DataCriacao = dataAtual,
             DataPrazo = entrada.DataPrazo,
             DataConclusao = null
@@ -96,17 +127,22 @@ public sealed class CriarTarefaCasoDeUso : ICriarTarefaCasoDeUso
         await repositorioTarefa.AdicionarAsync(tarefa, cancellationToken);
         await repositorioTarefa.SalvarAlteracoesAsync(cancellationToken);
         await notificadorTempoRealTarefas.NotificarAtribuicaoAsync(
-            tarefa.ResponsavelId,
+            tarefa.ResponsavelUsuarioId,
             tarefa.Id,
             tarefa.ProjetoId,
             tarefa.Titulo,
             reatribuicao: false,
             cancellationToken);
 
-        return MapearParaResposta(tarefa, dataAtual);
+        var area = await repositorioArea.ObterPorIdAsync(projeto.AreaId, cancellationToken);
+        return MapearParaResposta(tarefa, responsavel, area?.Nome, dataAtual);
     }
 
-    private static TarefaResposta MapearParaResposta(Tarefa tarefa, DateTime dataReferencia)
+    private static TarefaResposta MapearParaResposta(
+        Tarefa tarefa,
+        Usuario responsavel,
+        string? areaNome,
+        DateTime dataReferencia)
     {
         return new TarefaResposta
         {
@@ -116,7 +152,10 @@ public sealed class CriarTarefaCasoDeUso : ICriarTarefaCasoDeUso
             Status = tarefa.Status,
             Prioridade = tarefa.Prioridade,
             ProjetoId = tarefa.ProjetoId,
-            ResponsavelId = tarefa.ResponsavelId,
+            ResponsavelUsuarioId = tarefa.ResponsavelUsuarioId,
+            ResponsavelNome = responsavel.Nome,
+            ResponsavelEmail = responsavel.Email,
+            AreaNome = areaNome,
             DataCriacao = tarefa.DataCriacao,
             DataPrazo = tarefa.DataPrazo,
             DataConclusao = tarefa.DataConclusao,

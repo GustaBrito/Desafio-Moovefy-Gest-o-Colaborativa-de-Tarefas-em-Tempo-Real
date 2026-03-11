@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using GerenciadorTarefas.Infraestrutura.Persistencia.Sementes;
 using GerenciadorTarefas.TestesIntegracao.Infraestrutura;
 
 namespace GerenciadorTarefas.TestesIntegracao;
@@ -18,7 +19,8 @@ public sealed class ProjetosIntegracaoTestes
         var respostaCriacao = await cliente.PostAsJsonAsync("/api/projetos", new
         {
             Nome = "Projeto Integracao",
-            Descricao = "Criado em teste de integracao"
+            Descricao = "Criado em teste de integracao",
+            AreaId = SemeadorDadosDemonstracao.AreaGeralId
         });
 
         var corpoCriacao = await respostaCriacao.Content.ReadAsStringAsync();
@@ -30,7 +32,8 @@ public sealed class ProjetosIntegracaoTestes
         var respostaAtualizacao = await cliente.PutAsJsonAsync($"/api/projetos/{projetoId}", new
         {
             Nome = "Projeto Integracao Atualizado",
-            Descricao = "Descricao atualizada"
+            Descricao = "Descricao atualizada",
+            AreaId = SemeadorDadosDemonstracao.AreaGeralId
         });
 
         respostaAtualizacao.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -59,7 +62,8 @@ public sealed class ProjetosIntegracaoTestes
         var respostaProjeto = await cliente.PostAsJsonAsync("/api/projetos", new
         {
             Nome = "Projeto com tarefas",
-            Descricao = "Regra de bloqueio"
+            Descricao = "Regra de bloqueio",
+            AreaId = SemeadorDadosDemonstracao.AreaGeralId
         });
 
         var projetoCriado = await ClienteApiTeste.LerEnvelopeSucessoAsync<ProjetoDadosRespostaTeste>(respostaProjeto);
@@ -71,7 +75,7 @@ public sealed class ProjetosIntegracaoTestes
             Descricao = "Impede exclusao",
             Prioridade = 2,
             ProjetoId = projetoId,
-            ResponsavelId = Guid.Parse(ResponsavelAdministradorId),
+            ResponsavelUsuarioId = Guid.Parse(ResponsavelAdministradorId),
             DataPrazo = DateTime.UtcNow.AddDays(3)
         });
         respostaTarefa.StatusCode.Should().Be(HttpStatusCode.Created);

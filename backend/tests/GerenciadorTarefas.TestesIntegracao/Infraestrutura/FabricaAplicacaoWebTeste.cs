@@ -1,4 +1,5 @@
 using GerenciadorTarefas.Infraestrutura.Persistencia;
+using GerenciadorTarefas.Infraestrutura.Persistencia.Sementes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -23,17 +24,7 @@ internal sealed class FabricaAplicacaoWebTeste : WebApplicationFactory<Program>
                 ["AutenticacaoJwt:ChaveSecreta"] = "defina-uma-chave-jwt-segura-por-variavel-de-ambiente",
                 ["AutenticacaoJwt:Emissor"] = "GerenciadorTarefas.Api",
                 ["AutenticacaoJwt:Publico"] = "GerenciadorTarefas.Web",
-                ["AutenticacaoJwt:ExpiracaoMinutos"] = "120",
-                ["AutenticacaoJwt:Usuarios:0:Id"] = "8c519a4d-3f6d-4d0b-8b77-6ee8f5735990",
-                ["AutenticacaoJwt:Usuarios:0:Nome"] = "Administrador",
-                ["AutenticacaoJwt:Usuarios:0:Email"] = "admin@gerenciadortarefas.local",
-                ["AutenticacaoJwt:Usuarios:0:Senha"] = "Admin@123",
-                ["AutenticacaoJwt:Usuarios:0:Perfil"] = "Administrador",
-                ["AutenticacaoJwt:Usuarios:1:Id"] = "f3af6b8c-58de-4225-a1d2-838b22f2d08e",
-                ["AutenticacaoJwt:Usuarios:1:Nome"] = "Colaborador",
-                ["AutenticacaoJwt:Usuarios:1:Email"] = "colaborador@gerenciadortarefas.local",
-                ["AutenticacaoJwt:Usuarios:1:Senha"] = "Colaborador@123",
-                ["AutenticacaoJwt:Usuarios:1:Perfil"] = "Colaborador"
+                ["AutenticacaoJwt:ExpiracaoMinutos"] = "120"
             });
         });
 
@@ -55,6 +46,7 @@ internal sealed class FabricaAplicacaoWebTeste : WebApplicationFactory<Program>
             var contextoBancoDados = escopo.ServiceProvider.GetRequiredService<ContextoBancoDados>();
             contextoBancoDados.Database.EnsureDeleted();
             contextoBancoDados.Database.EnsureCreated();
+            SemeadorDadosDemonstracao.AplicarAsync(contextoBancoDados).GetAwaiter().GetResult();
         });
     }
 }

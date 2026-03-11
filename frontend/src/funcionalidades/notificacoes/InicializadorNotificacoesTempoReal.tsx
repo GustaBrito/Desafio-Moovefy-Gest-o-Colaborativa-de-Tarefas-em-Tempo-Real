@@ -30,7 +30,6 @@ export function InicializadorNotificacoesTempoReal(): null {
     }
 
     const tokenAcesso = sessao.tokenAcesso;
-    const usuarioId = sessao.usuarioId;
     let ativo = true;
     const conexaoNotificacoes = criarConexaoNotificacoesTempoReal(
       tokenAcesso
@@ -45,7 +44,7 @@ export function InicializadorNotificacoesTempoReal(): null {
 
       const notificacaoRecebida: NotificacaoHistoricoResposta = {
         id: `${evento.tarefaId}:${evento.dataOcorrencia}`,
-        responsavelId: evento.responsavelId,
+        responsavelUsuarioId: evento.responsavelUsuarioId,
         tarefaId: evento.tarefaId,
         projetoId: evento.projetoId,
         tituloTarefa: evento.tituloTarefa,
@@ -74,10 +73,7 @@ export function InicializadorNotificacoesTempoReal(): null {
 
       try {
         await conexaoNotificacoes.start();
-        await conexaoNotificacoes.invoke(
-          METODO_ENTRAR_CANAL_RESPONSAVEL,
-          usuarioId
-        );
+        await conexaoNotificacoes.invoke(METODO_ENTRAR_CANAL_RESPONSAVEL);
       } catch {
         if (ativo) {
           mostrarErro("Nao foi possivel conectar no canal de notificacoes em tempo real.");
@@ -93,7 +89,7 @@ export function InicializadorNotificacoesTempoReal(): null {
 
       if (conexaoNotificacoes.state === HubConnectionState.Connected) {
         void conexaoNotificacoes
-          .invoke(METODO_SAIR_CANAL_RESPONSAVEL, usuarioId)
+          .invoke(METODO_SAIR_CANAL_RESPONSAVEL)
           .catch(() => undefined);
       }
 
@@ -106,7 +102,7 @@ export function InicializadorNotificacoesTempoReal(): null {
     mostrarErro,
     mostrarInformacao,
     sessao?.tokenAcesso,
-    sessao?.usuarioId,
+    sessao?.usuarioId
   ]);
 
   return null;

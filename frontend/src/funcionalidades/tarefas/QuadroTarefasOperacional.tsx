@@ -54,6 +54,8 @@ export function QuadroTarefasOperacional({
                       />
                     </div>
                     <span>{mapaProjetos.get(tarefa.projetoId) ?? "Projeto nao encontrado"}</span>
+                    <small>{tarefa.areaNome ?? "Area nao informada"}</small>
+                    <small>{tarefa.responsavelNome ?? tarefa.responsavelUsuarioId}</small>
                     <small>{tarefa.descricao || "Sem descricao."}</small>
 
                     <div className="rodape-cartao-kanban">

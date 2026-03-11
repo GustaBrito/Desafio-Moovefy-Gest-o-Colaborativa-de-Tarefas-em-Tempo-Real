@@ -10,7 +10,10 @@ public sealed class TarefaResposta
     public StatusTarefa Status { get; init; }
     public PrioridadeTarefa Prioridade { get; init; }
     public Guid ProjetoId { get; init; }
-    public Guid ResponsavelId { get; init; }
+    public Guid ResponsavelUsuarioId { get; init; }
+    public string? ResponsavelNome { get; init; }
+    public string? ResponsavelEmail { get; init; }
+    public string? AreaNome { get; init; }
     public DateTime DataCriacao { get; init; }
     public DateTime DataPrazo { get; init; }
     public DateTime? DataConclusao { get; init; }

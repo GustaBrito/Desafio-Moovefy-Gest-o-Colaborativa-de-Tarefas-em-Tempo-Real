@@ -42,7 +42,8 @@ public sealed class ControladorAutenticacao : ControllerBase
                 UsuarioId = resultado.UsuarioId,
                 Nome = resultado.Nome,
                 Email = resultado.Email,
-                Perfil = resultado.Perfil,
+                PerfilGlobal = resultado.PerfilGlobal,
+                AreaIds = resultado.AreaIds,
                 TokenAcesso = resultado.TokenAcesso,
                 TipoToken = resultado.TipoToken,
                 ExpiraEmUtc = resultado.ExpiraEmUtc

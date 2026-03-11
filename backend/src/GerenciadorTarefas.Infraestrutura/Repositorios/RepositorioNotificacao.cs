@@ -15,7 +15,7 @@ public sealed class RepositorioNotificacao : IRepositorioNotificacao
     }
 
     public async Task<IReadOnlyCollection<Notificacao>> ListarRecentesAsync(
-        Guid? responsavelId,
+        Guid? responsavelUsuarioId,
         int limite,
         CancellationToken cancellationToken = default)
     {
@@ -25,9 +25,10 @@ public sealed class RepositorioNotificacao : IRepositorioNotificacao
             .AsNoTracking()
             .AsQueryable();
 
-        if (responsavelId.HasValue)
+        if (responsavelUsuarioId.HasValue)
         {
-            consulta = consulta.Where(notificacao => notificacao.ResponsavelId == responsavelId.Value);
+            consulta = consulta.Where(notificacao =>
+                notificacao.ResponsavelUsuarioId == responsavelUsuarioId.Value);
         }
 
         return await consulta

@@ -10,12 +10,46 @@ public sealed class CriarTarefaCasoDeUsoTestes
 {
     private readonly RepositorioProjetoFalso repositorioProjeto = new();
     private readonly RepositorioTarefaFalso repositorioTarefa = new();
+    private readonly RepositorioUsuarioFalso repositorioUsuario = new();
+    private readonly RepositorioAreaFalso repositorioArea = new();
+    private readonly RepositorioUsuarioAreaFalso repositorioUsuarioArea = new();
     private readonly NotificadorTempoRealTarefasFalso notificador = new();
+    private readonly Area areaPadrao = new()
+    {
+        Id = Guid.NewGuid(),
+        Nome = "Area Teste",
+        Ativa = true
+    };
+    private readonly Usuario responsavelPadrao = new()
+    {
+        Id = Guid.NewGuid(),
+        Nome = "Colaborador Teste",
+        Email = "colaborador.teste@local",
+        SenhaHash = "hash",
+        PerfilGlobal = PerfilGlobalUsuario.Colaborador,
+        Ativo = true,
+        DataCriacao = DateTime.UtcNow
+    };
     private readonly CriarTarefaCasoDeUso casoDeUso;
 
     public CriarTarefaCasoDeUsoTestes()
     {
-        casoDeUso = new CriarTarefaCasoDeUso(repositorioProjeto, repositorioTarefa, notificador);
+        repositorioArea.Areas.Add(areaPadrao);
+        repositorioUsuario.Usuarios.Add(responsavelPadrao);
+        repositorioUsuarioArea.Usuarios.Add(responsavelPadrao);
+        repositorioUsuarioArea.Vinculos.Add(new UsuarioArea
+        {
+            UsuarioId = responsavelPadrao.Id,
+            AreaId = areaPadrao.Id
+        });
+
+        casoDeUso = new CriarTarefaCasoDeUso(
+            repositorioProjeto,
+            repositorioTarefa,
+            repositorioUsuario,
+            repositorioArea,
+            repositorioUsuarioArea,
+            notificador);
     }
 
     [Fact]
@@ -44,7 +78,7 @@ public sealed class CriarTarefaCasoDeUsoTestes
             Titulo = "Titulo",
             Prioridade = PrioridadeTarefa.Media,
             ProjetoId = Guid.Empty,
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
             DataPrazo = DateTime.UtcNow.AddDays(1)
         };
 
@@ -55,14 +89,14 @@ public sealed class CriarTarefaCasoDeUsoTestes
     }
 
     [Fact]
-    public async Task ExecutarAsync_DeveLancarExcecao_QuandoResponsavelIdForVazio()
+    public async Task ExecutarAsync_DeveLancarExcecao_QuandoResponsavelUsuarioIdForVazio()
     {
         var entrada = new CriarTarefaEntrada
         {
             Titulo = "Titulo",
             Prioridade = PrioridadeTarefa.Media,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.Empty,
+            ResponsavelUsuarioId = Guid.Empty,
             DataPrazo = DateTime.UtcNow.AddDays(1)
         };
 
@@ -81,7 +115,7 @@ public sealed class CriarTarefaCasoDeUsoTestes
             Descricao = "Descricao",
             Prioridade = (PrioridadeTarefa)999,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
             DataPrazo = DateTime.UtcNow.AddDays(2)
         };
         repositorioProjeto.Projetos.Add(CriarProjeto(entrada.ProjetoId));
@@ -100,7 +134,7 @@ public sealed class CriarTarefaCasoDeUsoTestes
             Titulo = "   ",
             Prioridade = PrioridadeTarefa.Baixa,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
             DataPrazo = DateTime.UtcNow.AddDays(1)
         };
         repositorioProjeto.Projetos.Add(CriarProjeto(entrada.ProjetoId));
@@ -119,7 +153,7 @@ public sealed class CriarTarefaCasoDeUsoTestes
             Titulo = new string('x', 201),
             Prioridade = PrioridadeTarefa.Baixa,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
             DataPrazo = DateTime.UtcNow.AddDays(1)
         };
         repositorioProjeto.Projetos.Add(CriarProjeto(entrada.ProjetoId));
@@ -139,7 +173,7 @@ public sealed class CriarTarefaCasoDeUsoTestes
             Descricao = new string('x', 2001),
             Prioridade = PrioridadeTarefa.Baixa,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
             DataPrazo = DateTime.UtcNow.AddDays(1)
         };
         repositorioProjeto.Projetos.Add(CriarProjeto(entrada.ProjetoId));
@@ -158,7 +192,7 @@ public sealed class CriarTarefaCasoDeUsoTestes
             Titulo = "Titulo",
             Prioridade = PrioridadeTarefa.Baixa,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
             DataPrazo = DateTime.MinValue
         };
         repositorioProjeto.Projetos.Add(CriarProjeto(entrada.ProjetoId));
@@ -194,7 +228,7 @@ public sealed class CriarTarefaCasoDeUsoTestes
             Descricao = "   ",
             Prioridade = PrioridadeTarefa.Media,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = responsavelPadrao.Id,
             DataPrazo = DateTime.UtcNow.AddDays(2)
         };
         repositorioProjeto.Projetos.Add(CriarProjeto(entrada.ProjetoId));
@@ -205,17 +239,18 @@ public sealed class CriarTarefaCasoDeUsoTestes
         repositorioTarefa.TarefaAdicionada!.Descricao.Should().BeNull();
     }
 
-    private static Projeto CriarProjeto(Guid projetoId)
+    private Projeto CriarProjeto(Guid projetoId)
     {
         return new Projeto
         {
             Id = projetoId,
             Nome = "Projeto principal",
+            AreaId = areaPadrao.Id,
             DataCriacao = DateTime.UtcNow.AddDays(-5)
         };
     }
 
-    private static CriarTarefaEntrada CriarEntradaValida()
+    private CriarTarefaEntrada CriarEntradaValida()
     {
         return new CriarTarefaEntrada
         {
@@ -223,7 +258,7 @@ public sealed class CriarTarefaCasoDeUsoTestes
             Descricao = "  Descricao valida  ",
             Prioridade = PrioridadeTarefa.Alta,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = responsavelPadrao.Id,
             DataPrazo = DateTime.UtcNow.AddDays(5)
         };
     }

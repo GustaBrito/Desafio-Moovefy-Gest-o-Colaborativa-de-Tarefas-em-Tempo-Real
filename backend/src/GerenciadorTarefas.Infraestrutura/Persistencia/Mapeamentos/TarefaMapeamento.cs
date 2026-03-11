@@ -39,8 +39,8 @@ public sealed class TarefaMapeamento : IEntityTypeConfiguration<Tarefa>
             .HasColumnName("projeto_id")
             .IsRequired();
 
-        builder.Property(tarefa => tarefa.ResponsavelId)
-            .HasColumnName("responsavel_id")
+        builder.Property(tarefa => tarefa.ResponsavelUsuarioId)
+            .HasColumnName("responsavel_usuario_id")
             .IsRequired();
 
         builder.Property(tarefa => tarefa.DataCriacao)
@@ -54,11 +54,17 @@ public sealed class TarefaMapeamento : IEntityTypeConfiguration<Tarefa>
         builder.Property(tarefa => tarefa.DataConclusao)
             .HasColumnName("data_conclusao");
 
-        builder.HasOne<Projeto>()
+        builder.HasOne(tarefa => tarefa.Projeto)
             .WithMany()
             .HasForeignKey(tarefa => tarefa.ProjetoId)
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_tarefas_projetos_projeto_id");
+
+        builder.HasOne(tarefa => tarefa.ResponsavelUsuario)
+            .WithMany()
+            .HasForeignKey(tarefa => tarefa.ResponsavelUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_tarefas_usuarios_responsavel_usuario_id");
 
         builder.HasIndex(tarefa => tarefa.ProjetoId)
             .HasDatabaseName("ix_tarefas_projeto_id");
@@ -66,8 +72,8 @@ public sealed class TarefaMapeamento : IEntityTypeConfiguration<Tarefa>
         builder.HasIndex(tarefa => tarefa.Status)
             .HasDatabaseName("ix_tarefas_status");
 
-        builder.HasIndex(tarefa => tarefa.ResponsavelId)
-            .HasDatabaseName("ix_tarefas_responsavel_id");
+        builder.HasIndex(tarefa => tarefa.ResponsavelUsuarioId)
+            .HasDatabaseName("ix_tarefas_responsavel_usuario_id");
 
         builder.HasIndex(tarefa => tarefa.DataPrazo)
             .HasDatabaseName("ix_tarefas_data_prazo");

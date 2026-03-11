@@ -32,7 +32,10 @@ export interface TarefaResposta {
   status: StatusTarefa;
   prioridade: PrioridadeTarefa;
   projetoId: string;
-  responsavelId: string;
+  responsavelUsuarioId: string;
+  responsavelNome?: string | null;
+  responsavelEmail?: string | null;
+  areaNome?: string | null;
   dataCriacao: string;
   dataPrazo: string;
   dataConclusao?: string | null;
@@ -52,7 +55,7 @@ export interface CriarTarefaRequisicao {
   descricao?: string | null;
   prioridade: PrioridadeTarefa;
   projetoId: string;
-  responsavelId: string;
+  responsavelUsuarioId: string;
   dataPrazo: string;
 }
 
@@ -61,7 +64,7 @@ export interface AtualizarTarefaRequisicao {
   descricao?: string | null;
   status: StatusTarefa;
   prioridade: PrioridadeTarefa;
-  responsavelId: string;
+  responsavelUsuarioId: string;
   dataPrazo: string;
 }
 
@@ -72,7 +75,7 @@ export interface AtualizarStatusTarefaRequisicao {
 export interface FiltroConsultaTarefas {
   projetoId?: string;
   status?: StatusTarefa;
-  responsavelId?: string;
+  responsavelUsuarioId?: string;
   dataPrazoInicial?: string;
   dataPrazoFinal?: string;
   campoOrdenacao?: CampoOrdenacaoTarefa;

@@ -5,6 +5,12 @@ import { z } from "zod";
 import type { ProjetoResposta } from "../../tipos/projetos";
 import { PrioridadeTarefa } from "../../tipos/tarefas";
 
+interface UsuarioResponsavelOpcao {
+  id: string;
+  nome: string;
+  email: string;
+}
+
 function criarEsquemaFormularioTarefa(permitirPrazoPassado: boolean) {
   return z.object({
     titulo: z
@@ -17,9 +23,9 @@ function criarEsquemaFormularioTarefa(permitirPrazoPassado: boolean) {
       .optional(),
     prioridade: z.nativeEnum(PrioridadeTarefa),
     projetoId: z.string().uuid("Selecione um projeto valido."),
-    responsavelId: z
+    responsavelUsuarioId: z
       .string()
-      .uuid("O responsavel deve possuir um identificador valido."),
+      .uuid("Selecione um responsavel valido."),
     dataPrazo: z
       .string()
       .min(1, "A data de prazo deve ser informada.")
@@ -46,7 +52,8 @@ type DadosFormularioTarefa = z.infer<typeof esquemaFormularioCriacaoTarefa>;
 
 interface PropriedadesFormularioTarefa {
   projetos: ProjetoResposta[];
-  responsavelIdPadrao: string;
+  usuariosResponsaveis: UsuarioResponsavelOpcao[];
+  responsavelUsuarioIdPadrao: string;
   emEnvio: boolean;
   titulo?: string;
   rotuloBotao?: string;
@@ -59,7 +66,8 @@ interface PropriedadesFormularioTarefa {
 
 export function FormularioTarefa({
   projetos,
-  responsavelIdPadrao,
+  usuariosResponsaveis,
+  responsavelUsuarioIdPadrao,
   emEnvio,
   titulo = "Nova tarefa",
   rotuloBotao = "Salvar tarefa",
@@ -80,10 +88,11 @@ export function FormularioTarefa({
       descricao: valoresIniciais?.descricao ?? "",
       prioridade: valoresIniciais?.prioridade ?? PrioridadeTarefa.Media,
       projetoId: valoresIniciais?.projetoId ?? "",
-      responsavelId: valoresIniciais?.responsavelId ?? responsavelIdPadrao,
+      responsavelUsuarioId:
+        valoresIniciais?.responsavelUsuarioId ?? responsavelUsuarioIdPadrao,
       dataPrazo: valoresIniciais?.dataPrazo ?? "",
     }),
-    [responsavelIdPadrao, valoresIniciais]
+    [responsavelUsuarioIdPadrao, valoresIniciais]
   );
 
   const {
@@ -98,10 +107,10 @@ export function FormularioTarefa({
   });
 
   useEffect(() => {
-    if (!valoresIniciais && responsavelIdPadrao.trim().length > 0) {
-      setValue("responsavelId", responsavelIdPadrao);
+    if (!valoresIniciais && responsavelUsuarioIdPadrao.trim().length > 0) {
+      setValue("responsavelUsuarioId", responsavelUsuarioIdPadrao);
     }
-  }, [valoresIniciais, responsavelIdPadrao, setValue]);
+  }, [valoresIniciais, responsavelUsuarioIdPadrao, setValue]);
 
   useEffect(() => {
     reset(valoresPadrao);
@@ -116,7 +125,7 @@ export function FormularioTarefa({
         descricao: "",
         prioridade: PrioridadeTarefa.Media,
         projetoId: "",
-        responsavelId: responsavelIdPadrao,
+        responsavelUsuarioId: responsavelUsuarioIdPadrao,
         dataPrazo: "",
       });
     }
@@ -146,7 +155,7 @@ export function FormularioTarefa({
         <option value="">Selecione</option>
         {projetos.map((projeto) => (
           <option key={projeto.id} value={projeto.id}>
-            {projeto.nome}
+            {projeto.nome} ({projeto.areaNome})
           </option>
         ))}
       </select>
@@ -170,10 +179,17 @@ export function FormularioTarefa({
         <option value={PrioridadeTarefa.Urgente}>Urgente</option>
       </select>
 
-      <label htmlFor="responsavelTarefa">Responsavel (Id)</label>
-      <input id="responsavelTarefa" type="text" {...register("responsavelId")} />
-      {errors.responsavelId && (
-        <span className="mensagem-erro">{errors.responsavelId.message}</span>
+      <label htmlFor="responsavelTarefa">Responsavel</label>
+      <select id="responsavelTarefa" {...register("responsavelUsuarioId")}>
+        <option value="">Selecione</option>
+        {usuariosResponsaveis.map((usuario) => (
+          <option key={usuario.id} value={usuario.id}>
+            {usuario.nome} ({usuario.email})
+          </option>
+        ))}
+      </select>
+      {errors.responsavelUsuarioId && (
+        <span className="mensagem-erro">{errors.responsavelUsuarioId.message}</span>
       )}
 
       <label htmlFor="dataPrazoTarefa">Data de prazo</label>
@@ -188,7 +204,12 @@ export function FormularioTarefa({
       )}
 
       <div className="linha-botoes-formulario">
-        <button type="submit" disabled={emEnvio || projetos.length === 0}>
+        <button
+          type="submit"
+          disabled={
+            emEnvio || projetos.length === 0 || usuariosResponsaveis.length === 0
+          }
+        >
           {emEnvio ? rotuloBotaoEmEnvio : rotuloBotao}
         </button>
 

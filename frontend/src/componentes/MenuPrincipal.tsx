@@ -3,7 +3,7 @@ import { usarAutenticacao } from "../ganchos/usarAutenticacao";
 import { usarNotificacao } from "../ganchos/usarNotificacao";
 
 export function MenuPrincipal(): JSX.Element {
-  const { sessao, realizarLogout } = usarAutenticacao();
+  const { sessao, realizarLogout, ehSuperAdmin, ehAdmin } = usarAutenticacao();
   const { historicoNotificacoes } = usarNotificacao();
 
   return (
@@ -20,6 +20,8 @@ export function MenuPrincipal(): JSX.Element {
         <NavLink to="/dashboard">Dashboard</NavLink>
         <NavLink to="/projetos">Projetos</NavLink>
         <NavLink to="/tarefas">Tarefas</NavLink>
+        {(ehSuperAdmin || ehAdmin) && <NavLink to="/usuarios">Usuarios</NavLink>}
+        {ehSuperAdmin && <NavLink to="/areas">Areas</NavLink>}
       </nav>
 
       <button className="botao-logout" onClick={realizarLogout} type="button">

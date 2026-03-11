@@ -2,6 +2,13 @@ import { useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import type { AreaResposta } from "../../tipos/areas";
+
+interface GestorOpcao {
+  id: string;
+  nome: string;
+  email: string;
+}
 
 const esquemaFormularioProjeto = z.object({
   nome: z
@@ -12,16 +19,26 @@ const esquemaFormularioProjeto = z.object({
     .string()
     .max(1000, "A descricao do projeto deve ter no maximo 1000 caracteres.")
     .optional(),
+  areaId: z.string().uuid("A area do projeto deve ser informada."),
+  gestorUsuarioId: z
+    .string()
+    .uuid("Quando informado, o gestor deve ser valido.")
+    .optional()
+    .or(z.literal("")),
 });
 
 type DadosFormularioProjeto = z.infer<typeof esquemaFormularioProjeto>;
 
 interface PropriedadesFormularioProjeto {
+  areas: AreaResposta[];
+  gestores: GestorOpcao[];
   emEnvio: boolean;
   aoEnviar: (dados: DadosFormularioProjeto) => Promise<void>;
   valoresIniciais?: {
     nome: string;
     descricao?: string | null;
+    areaId: string;
+    gestorUsuarioId?: string | null;
   };
   titulo?: string;
   rotuloBotao?: string;
@@ -30,6 +47,8 @@ interface PropriedadesFormularioProjeto {
 }
 
 export function FormularioProjeto({
+  areas,
+  gestores,
   emEnvio,
   aoEnviar,
   valoresIniciais,
@@ -42,8 +61,15 @@ export function FormularioProjeto({
     () => ({
       nome: valoresIniciais?.nome ?? "",
       descricao: valoresIniciais?.descricao ?? "",
+      areaId: valoresIniciais?.areaId ?? "",
+      gestorUsuarioId: valoresIniciais?.gestorUsuarioId ?? "",
     }),
-    [valoresIniciais?.nome, valoresIniciais?.descricao]
+    [
+      valoresIniciais?.nome,
+      valoresIniciais?.descricao,
+      valoresIniciais?.areaId,
+      valoresIniciais?.gestorUsuarioId,
+    ]
   );
 
   const {
@@ -71,6 +97,8 @@ export function FormularioProjeto({
       reset({
         nome: "",
         descricao: "",
+        areaId: "",
+        gestorUsuarioId: "",
       });
     }
   }
@@ -106,8 +134,32 @@ export function FormularioProjeto({
         <span className="mensagem-erro">{errors.descricao.message}</span>
       )}
 
+      <label htmlFor="areaProjeto">Area</label>
+      <select id="areaProjeto" {...register("areaId")}>
+        <option value="">Selecione</option>
+        {areas.map((area) => (
+          <option key={area.id} value={area.id}>
+            {area.nome}
+          </option>
+        ))}
+      </select>
+      {errors.areaId && <span className="mensagem-erro">{errors.areaId.message}</span>}
+
+      <label htmlFor="gestorProjeto">Gestor (opcional)</label>
+      <select id="gestorProjeto" {...register("gestorUsuarioId")}>
+        <option value="">Nao definido</option>
+        {gestores.map((gestor) => (
+          <option key={gestor.id} value={gestor.id}>
+            {gestor.nome} ({gestor.email})
+          </option>
+        ))}
+      </select>
+      {errors.gestorUsuarioId && (
+        <span className="mensagem-erro">{errors.gestorUsuarioId.message}</span>
+      )}
+
       <div className="linha-botoes-formulario">
-        <button type="submit" disabled={emEnvio}>
+        <button type="submit" disabled={emEnvio || areas.length === 0}>
           {emEnvio ? rotuloBotaoEmEnvio : rotuloBotao}
         </button>
 

@@ -8,6 +8,6 @@ public sealed class CriarTarefaEntrada
     public string? Descricao { get; init; }
     public PrioridadeTarefa Prioridade { get; init; }
     public Guid ProjetoId { get; init; }
-    public Guid ResponsavelId { get; init; }
+    public Guid ResponsavelUsuarioId { get; init; }
     public DateTime DataPrazo { get; init; }
 }

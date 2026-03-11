@@ -25,7 +25,7 @@ public sealed class ValidadorCriarTarefaRequisicao : AbstractValidator<CriarTare
             .NotEmpty()
             .WithMessage("O identificador do projeto deve ser informado.");
 
-        RuleFor(requisicao => requisicao.ResponsavelId)
+        RuleFor(requisicao => requisicao.ResponsavelUsuarioId)
             .NotEmpty()
             .WithMessage("O identificador do responsavel deve ser informado.");
 

@@ -60,13 +60,13 @@ export function FormularioLogin({
 
   function preencherAcessoRapido(tipoAcesso: "administrador" | "colaborador"): void {
     if (tipoAcesso === "administrador") {
-      setValue("email", "admin@gerenciadortarefas.local", { shouldValidate: true });
-      setValue("senha", "Admin@123", { shouldValidate: true });
+      setValue("email", "superadmin@gerenciadortarefas.local", { shouldValidate: true });
+      setValue("senha", "SuperAdmin@123", { shouldValidate: true });
       return;
     }
 
-    setValue("email", "colaborador@gerenciadortarefas.local", { shouldValidate: true });
-    setValue("senha", "Colaborador@123", { shouldValidate: true });
+    setValue("email", "colaborador.dev@gerenciadortarefas.local", { shouldValidate: true });
+    setValue("senha", "ColaboradorDev@123", { shouldValidate: true });
   }
 
   function atualizarIndicadorCapsLock(evento: KeyboardEvent<HTMLInputElement>): void {

@@ -1,6 +1,6 @@
 export interface NotificacaoHistoricoResposta {
   id: string;
-  responsavelId: string;
+  responsavelUsuarioId: string;
   tarefaId: string;
   projetoId: string;
   tituloTarefa: string;
@@ -12,7 +12,7 @@ export interface NotificacaoHistoricoResposta {
 export interface EventoTarefaAtribuidaTempoReal {
   tarefaId: string;
   projetoId: string;
-  responsavelId: string;
+  responsavelUsuarioId: string;
   tituloTarefa: string;
   reatribuicao: boolean;
   mensagem: string;

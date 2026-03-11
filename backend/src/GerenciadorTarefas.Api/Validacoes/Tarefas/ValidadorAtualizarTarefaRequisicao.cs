@@ -25,7 +25,7 @@ public sealed class ValidadorAtualizarTarefaRequisicao : AbstractValidator<Atual
             .IsInEnum()
             .WithMessage("A prioridade informada e invalida.");
 
-        RuleFor(requisicao => requisicao.ResponsavelId)
+        RuleFor(requisicao => requisicao.ResponsavelUsuarioId)
             .NotEmpty()
             .WithMessage("O identificador do responsavel deve ser informado.");
 

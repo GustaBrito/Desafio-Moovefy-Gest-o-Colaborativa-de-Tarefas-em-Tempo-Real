@@ -9,7 +9,7 @@ public sealed class FiltroConsultaTarefasTestes
     public void Propriedades_DevePermitirLeituraDosValoresConfigurados()
     {
         var projetoId = Guid.NewGuid();
-        var responsavelId = Guid.NewGuid();
+        var ResponsavelUsuarioId = Guid.NewGuid();
         var dataInicial = DateTime.UtcNow.Date;
         var dataFinal = dataInicial.AddDays(5);
 
@@ -17,7 +17,7 @@ public sealed class FiltroConsultaTarefasTestes
         {
             ProjetoId = projetoId,
             Status = StatusTarefa.Pendente,
-            ResponsavelId = responsavelId,
+            ResponsavelUsuarioId = ResponsavelUsuarioId,
             DataPrazoInicial = dataInicial,
             DataPrazoFinal = dataFinal,
             CampoOrdenacao = CampoOrdenacaoTarefa.Titulo,
@@ -28,7 +28,7 @@ public sealed class FiltroConsultaTarefasTestes
 
         filtro.ProjetoId.Should().Be(projetoId);
         filtro.Status.Should().Be(StatusTarefa.Pendente);
-        filtro.ResponsavelId.Should().Be(responsavelId);
+        filtro.ResponsavelUsuarioId.Should().Be(ResponsavelUsuarioId);
         filtro.DataPrazoInicial.Should().Be(dataInicial);
         filtro.DataPrazoFinal.Should().Be(dataFinal);
         filtro.CampoOrdenacao.Should().Be(CampoOrdenacaoTarefa.Titulo);

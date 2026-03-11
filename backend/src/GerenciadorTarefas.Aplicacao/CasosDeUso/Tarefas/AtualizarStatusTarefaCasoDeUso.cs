@@ -7,10 +7,20 @@ namespace GerenciadorTarefas.Aplicacao.CasosDeUso.Tarefas;
 public sealed class AtualizarStatusTarefaCasoDeUso : IAtualizarStatusTarefaCasoDeUso
 {
     private readonly IRepositorioTarefa repositorioTarefa;
+    private readonly IRepositorioProjeto repositorioProjeto;
+    private readonly IRepositorioUsuario repositorioUsuario;
+    private readonly IRepositorioArea repositorioArea;
 
-    public AtualizarStatusTarefaCasoDeUso(IRepositorioTarefa repositorioTarefa)
+    public AtualizarStatusTarefaCasoDeUso(
+        IRepositorioTarefa repositorioTarefa,
+        IRepositorioProjeto repositorioProjeto,
+        IRepositorioUsuario repositorioUsuario,
+        IRepositorioArea repositorioArea)
     {
         this.repositorioTarefa = repositorioTarefa;
+        this.repositorioProjeto = repositorioProjeto;
+        this.repositorioUsuario = repositorioUsuario;
+        this.repositorioArea = repositorioArea;
     }
 
     public async Task<TarefaResposta> ExecutarAsync(
@@ -45,6 +55,12 @@ public sealed class AtualizarStatusTarefaCasoDeUso : IAtualizarStatusTarefaCasoD
         repositorioTarefa.Atualizar(tarefa);
         await repositorioTarefa.SalvarAlteracoesAsync(cancellationToken);
 
+        var projeto = await repositorioProjeto.ObterPorIdAsync(tarefa.ProjetoId, cancellationToken);
+        var responsavel = await repositorioUsuario.ObterPorIdAsync(tarefa.ResponsavelUsuarioId, cancellationToken);
+        var area = projeto is null
+            ? null
+            : await repositorioArea.ObterPorIdAsync(projeto.AreaId, cancellationToken);
+
         return new TarefaResposta
         {
             Id = tarefa.Id,
@@ -53,7 +69,10 @@ public sealed class AtualizarStatusTarefaCasoDeUso : IAtualizarStatusTarefaCasoD
             Status = tarefa.Status,
             Prioridade = tarefa.Prioridade,
             ProjetoId = tarefa.ProjetoId,
-            ResponsavelId = tarefa.ResponsavelId,
+            ResponsavelUsuarioId = tarefa.ResponsavelUsuarioId,
+            ResponsavelNome = responsavel?.Nome,
+            ResponsavelEmail = responsavel?.Email,
+            AreaNome = area?.Nome,
             DataCriacao = tarefa.DataCriacao,
             DataPrazo = tarefa.DataPrazo,
             DataConclusao = tarefa.DataConclusao,

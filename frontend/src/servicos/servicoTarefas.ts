@@ -80,7 +80,7 @@ function construirSufixoQuery(filtro: FiltroConsultaTarefas): string {
 
   adicionarParametro(parametros, "projetoId", filtro.projetoId);
   adicionarParametro(parametros, "status", filtro.status);
-  adicionarParametro(parametros, "responsavelId", filtro.responsavelId);
+  adicionarParametro(parametros, "responsavelUsuarioId", filtro.responsavelUsuarioId);
   adicionarParametro(parametros, "dataPrazoInicial", filtro.dataPrazoInicial);
   adicionarParametro(parametros, "dataPrazoFinal", filtro.dataPrazoFinal);
   adicionarParametro(parametros, "campoOrdenacao", filtro.campoOrdenacao);

@@ -7,50 +7,44 @@ namespace GerenciadorTarefas.Api.Hubs;
 [Authorize]
 public sealed class HubNotificacoes : Hub
 {
-    public async Task EntrarNoCanalResponsavelAsync(Guid responsavelId)
+    public override async Task OnConnectedAsync()
     {
-        if (responsavelId == Guid.Empty)
-        {
-            return;
-        }
-
-        if (!Context.User.TentarObterUsuarioId(out var usuarioIdAutenticado))
-        {
-            throw new HubException("Nao foi possivel identificar o usuario autenticado.");
-        }
-
-        var usuarioAdministrador = Context.User.PossuiPerfilAdministrador();
-        if (!usuarioAdministrador && usuarioIdAutenticado != responsavelId)
-        {
-            throw new HubException("Nao e permitido acessar o canal de outro responsavel.");
-        }
-
-        await Groups.AddToGroupAsync(
-            Context.ConnectionId,
-            ObterNomeCanalResponsavel(responsavelId));
+        await EntrarNoCanalUsuarioAtualAsync();
+        await base.OnConnectedAsync();
     }
 
-    public async Task SairDoCanalResponsavelAsync(Guid responsavelId)
+    public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        if (responsavelId == Guid.Empty)
-        {
-            return;
-        }
+        await SairDoCanalUsuarioAtualAsync();
+        await base.OnDisconnectedAsync(exception);
+    }
 
+    public async Task EntrarNoCanalUsuarioAtualAsync()
+    {
         if (!Context.User.TentarObterUsuarioId(out var usuarioIdAutenticado))
         {
             throw new HubException("Nao foi possivel identificar o usuario autenticado.");
-        }
-
-        var usuarioAdministrador = Context.User.PossuiPerfilAdministrador();
-        if (!usuarioAdministrador && usuarioIdAutenticado != responsavelId)
-        {
-            throw new HubException("Nao e permitido acessar o canal de outro responsavel.");
         }
 
         await Groups.RemoveFromGroupAsync(
             Context.ConnectionId,
-            ObterNomeCanalResponsavel(responsavelId));
+            ObterNomeCanalResponsavel(usuarioIdAutenticado));
+
+        await Groups.AddToGroupAsync(
+            Context.ConnectionId,
+            ObterNomeCanalResponsavel(usuarioIdAutenticado));
+    }
+
+    public async Task SairDoCanalUsuarioAtualAsync()
+    {
+        if (!Context.User.TentarObterUsuarioId(out var usuarioIdAutenticado))
+        {
+            return;
+        }
+
+        await Groups.RemoveFromGroupAsync(
+            Context.ConnectionId,
+            ObterNomeCanalResponsavel(usuarioIdAutenticado));
     }
 
     public static string ObterNomeCanalResponsavel(Guid responsavelId)

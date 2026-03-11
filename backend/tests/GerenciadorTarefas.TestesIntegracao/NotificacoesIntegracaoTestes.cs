@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using GerenciadorTarefas.Dominio.Enumeracoes;
+using GerenciadorTarefas.Infraestrutura.Persistencia.Sementes;
 using GerenciadorTarefas.TestesIntegracao.Infraestrutura;
 
 namespace GerenciadorTarefas.TestesIntegracao;
@@ -20,10 +21,10 @@ public sealed class NotificacoesIntegracaoTestes
         using var cliente = fabrica.CreateClient();
         await ClienteApiTeste.ConfigurarAutorizacaoAsync(
             cliente,
-            "colaborador@gerenciadortarefas.local",
-            "Colaborador@123");
+            "colaborador.dev@gerenciadortarefas.local",
+            "ColaboradorDev@123");
 
-        var resposta = await cliente.GetAsync($"/api/notificacoes?responsavelId={ResponsavelAdministradorId:D}");
+        var resposta = await cliente.GetAsync($"/api/notificacoes?responsavelUsuarioId={ResponsavelAdministradorId:D}");
 
         resposta.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -52,8 +53,8 @@ public sealed class NotificacoesIntegracaoTestes
         using var clienteColaborador = fabrica.CreateClient();
         await ClienteApiTeste.ConfigurarAutorizacaoAsync(
             clienteColaborador,
-            "colaborador@gerenciadortarefas.local",
-            "Colaborador@123");
+            "colaborador.dev@gerenciadortarefas.local",
+            "ColaboradorDev@123");
 
         var resposta = await clienteColaborador.GetAsync("/api/notificacoes?limite=50");
         resposta.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -63,7 +64,7 @@ public sealed class NotificacoesIntegracaoTestes
         envelope.Dados.Should().NotBeNull();
         envelope.Dados!
             .Should()
-            .OnlyContain(notificacao => notificacao.ResponsavelId == ResponsavelColaboradorId);
+            .OnlyContain(notificacao => notificacao.ResponsavelUsuarioId == ResponsavelColaboradorId);
     }
 
     [Fact]
@@ -73,7 +74,7 @@ public sealed class NotificacoesIntegracaoTestes
         using var clienteAdmin = fabrica.CreateClient();
         await ClienteApiTeste.ConfigurarAutorizacaoAsync(clienteAdmin);
 
-        var resposta = await clienteAdmin.GetAsync($"/api/notificacoes?responsavelId={ResponsavelColaboradorId:D}");
+        var resposta = await clienteAdmin.GetAsync($"/api/notificacoes?responsavelUsuarioId={ResponsavelColaboradorId:D}");
 
         resposta.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -83,7 +84,8 @@ public sealed class NotificacoesIntegracaoTestes
         var respostaCriacao = await cliente.PostAsJsonAsync("/api/projetos", new
         {
             Nome = nome,
-            Descricao = "Projeto de apoio para testes de notificacoes"
+            Descricao = "Projeto de apoio para testes de notificacoes",
+            AreaId = SemeadorDadosDemonstracao.AreaDesenvolvimentoSoftwareId
         });
 
         respostaCriacao.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -104,7 +106,7 @@ public sealed class NotificacoesIntegracaoTestes
             Descricao = "Tarefa para validar historico de notificacoes.",
             Prioridade = PrioridadeTarefa.Media,
             ProjetoId = projetoId,
-            ResponsavelId = responsavelId,
+            ResponsavelUsuarioId = responsavelId,
             DataPrazo = DateTime.UtcNow.AddDays(3)
         });
 
@@ -113,6 +115,6 @@ public sealed class NotificacoesIntegracaoTestes
 
     private sealed class NotificacaoDadosRespostaTeste
     {
-        public Guid ResponsavelId { get; init; }
+        public Guid ResponsavelUsuarioId { get; init; }
     }
 }

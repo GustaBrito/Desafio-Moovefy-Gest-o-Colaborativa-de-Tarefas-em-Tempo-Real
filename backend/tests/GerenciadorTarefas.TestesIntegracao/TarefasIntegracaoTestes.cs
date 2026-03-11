@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using GerenciadorTarefas.Dominio.Enumeracoes;
+using GerenciadorTarefas.Infraestrutura.Persistencia.Sementes;
 using GerenciadorTarefas.TestesIntegracao.Infraestrutura;
 
 namespace GerenciadorTarefas.TestesIntegracao;
@@ -96,7 +97,8 @@ public sealed class TarefasIntegracaoTestes
         var respostaCriacao = await cliente.PostAsJsonAsync("/api/projetos", new
         {
             Nome = nome,
-            Descricao = "Projeto de apoio para teste de tarefas"
+            Descricao = "Projeto de apoio para teste de tarefas",
+            AreaId = SemeadorDadosDemonstracao.AreaDesenvolvimentoSoftwareId
         });
 
         respostaCriacao.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -117,7 +119,7 @@ public sealed class TarefasIntegracaoTestes
             Descricao = "Tarefa de apoio para teste de integracao",
             Prioridade = PrioridadeTarefa.Media,
             ProjetoId = projetoId,
-            ResponsavelId = ResponsavelAdministradorId,
+            ResponsavelUsuarioId = ResponsavelAdministradorId,
             DataPrazo = dataPrazo
         });
 

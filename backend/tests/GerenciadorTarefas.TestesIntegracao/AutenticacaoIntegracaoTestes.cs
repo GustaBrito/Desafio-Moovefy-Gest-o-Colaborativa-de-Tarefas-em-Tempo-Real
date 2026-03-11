@@ -14,8 +14,8 @@ public sealed class AutenticacaoIntegracaoTestes
 
         var resposta = await cliente.PostAsJsonAsync("/api/autenticacao/login", new
         {
-            Email = "admin@gerenciadortarefas.local",
-            Senha = "Admin@123"
+            Email = "superadmin@gerenciadortarefas.local",
+            Senha = "SuperAdmin@123"
         });
 
         resposta.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -33,7 +33,7 @@ public sealed class AutenticacaoIntegracaoTestes
 
         var resposta = await cliente.PostAsJsonAsync("/api/autenticacao/login", new
         {
-            Email = "admin@gerenciadortarefas.local",
+            Email = "superadmin@gerenciadortarefas.local",
             Senha = "SenhaInvalida"
         });
 

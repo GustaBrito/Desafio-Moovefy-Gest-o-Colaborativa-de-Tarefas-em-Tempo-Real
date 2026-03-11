@@ -20,7 +20,23 @@ export function obterSessaoArmazenada(): SessaoAutenticacao | null {
   }
 
   try {
-    return JSON.parse(sessaoSerializada) as SessaoAutenticacao;
+    const sessao = JSON.parse(sessaoSerializada) as Partial<SessaoAutenticacao>;
+
+    if (!sessao.usuarioId || !sessao.tokenAcesso || !sessao.email || !sessao.nome) {
+      removerSessao();
+      return null;
+    }
+
+    return {
+      usuarioId: sessao.usuarioId,
+      nome: sessao.nome,
+      email: sessao.email,
+      perfilGlobal: sessao.perfilGlobal ?? 3,
+      areaIds: sessao.areaIds ?? [],
+      tokenAcesso: sessao.tokenAcesso,
+      tipoToken: sessao.tipoToken ?? "Bearer",
+      expiraEmUtc: sessao.expiraEmUtc ?? new Date().toISOString(),
+    };
   } catch {
     removerSessao();
     return null;

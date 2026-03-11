@@ -20,7 +20,7 @@ public sealed class ConsultaHistoricoNotificacoesCasoDeUsoTestes
     {
         var acao = async () => await casoDeUso.ListarAsync(new ConsultaHistoricoNotificacoesEntrada
         {
-            ResponsavelId = Guid.Empty
+            ResponsavelUsuarioId = Guid.Empty
         });
 
         await acao.Should().ThrowAsync<ArgumentException>();
@@ -54,7 +54,7 @@ public sealed class ConsultaHistoricoNotificacoesCasoDeUsoTestes
         var notificacao = new Notificacao
         {
             Id = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
             TarefaId = Guid.NewGuid(),
             ProjetoId = Guid.NewGuid(),
             TituloTarefa = "Atribuicao",

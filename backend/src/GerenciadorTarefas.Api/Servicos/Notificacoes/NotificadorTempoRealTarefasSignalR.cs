@@ -20,14 +20,14 @@ public sealed class NotificadorTempoRealTarefasSignalR : INotificadorTempoRealTa
     }
 
     public async Task NotificarAtribuicaoAsync(
-        Guid responsavelId,
+        Guid responsavelUsuarioId,
         Guid tarefaId,
         Guid projetoId,
         string tituloTarefa,
         bool reatribuicao,
         CancellationToken cancellationToken = default)
     {
-        if (responsavelId == Guid.Empty || tarefaId == Guid.Empty || projetoId == Guid.Empty)
+        if (responsavelUsuarioId == Guid.Empty || tarefaId == Guid.Empty || projetoId == Guid.Empty)
         {
             return;
         }
@@ -38,7 +38,7 @@ public sealed class NotificadorTempoRealTarefasSignalR : INotificadorTempoRealTa
             tituloNormalizado = "Tarefa sem titulo";
         }
 
-        var canalResponsavel = HubNotificacoes.ObterNomeCanalResponsavel(responsavelId);
+        var canalResponsavel = HubNotificacoes.ObterNomeCanalResponsavel(responsavelUsuarioId);
         var mensagem = reatribuicao
             ? "Uma tarefa foi reatribuida para voce."
             : "Uma nova tarefa foi atribuida para voce.";
@@ -47,7 +47,7 @@ public sealed class NotificadorTempoRealTarefasSignalR : INotificadorTempoRealTa
         var notificacao = new Notificacao
         {
             Id = Guid.NewGuid(),
-            ResponsavelId = responsavelId,
+            ResponsavelUsuarioId = responsavelUsuarioId,
             TarefaId = tarefaId,
             ProjetoId = projetoId,
             TituloTarefa = tituloNormalizado,
@@ -67,7 +67,7 @@ public sealed class NotificadorTempoRealTarefasSignalR : INotificadorTempoRealTa
                 {
                     TarefaId = tarefaId,
                     ProjetoId = projetoId,
-                    ResponsavelId = responsavelId,
+                    ResponsavelUsuarioId = responsavelUsuarioId,
                     TituloTarefa = tituloNormalizado,
                     Reatribuicao = reatribuicao,
                     Mensagem = mensagem,

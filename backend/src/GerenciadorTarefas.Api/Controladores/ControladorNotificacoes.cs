@@ -1,4 +1,5 @@
 using GerenciadorTarefas.Aplicacao.Contratos.Notificacoes;
+using GerenciadorTarefas.Aplicacao.Contratos.Usuarios;
 using GerenciadorTarefas.Aplicacao.Modelos.Notificacoes;
 using GerenciadorTarefas.Api.Contratos.Respostas;
 using GerenciadorTarefas.Api.Seguranca;
@@ -13,40 +14,52 @@ namespace GerenciadorTarefas.Api.Controladores;
 public sealed class ControladorNotificacoes : ControllerBase
 {
     private readonly IConsultaHistoricoNotificacoesCasoDeUso consultaHistoricoNotificacoesCasoDeUso;
+    private readonly IConsultaUsuariosCasoDeUso consultaUsuariosCasoDeUso;
 
-    public ControladorNotificacoes(IConsultaHistoricoNotificacoesCasoDeUso consultaHistoricoNotificacoesCasoDeUso)
+    public ControladorNotificacoes(
+        IConsultaHistoricoNotificacoesCasoDeUso consultaHistoricoNotificacoesCasoDeUso,
+        IConsultaUsuariosCasoDeUso consultaUsuariosCasoDeUso)
     {
         this.consultaHistoricoNotificacoesCasoDeUso = consultaHistoricoNotificacoesCasoDeUso;
+        this.consultaUsuariosCasoDeUso = consultaUsuariosCasoDeUso;
     }
 
     [HttpGet]
     [ProducesResponseType(typeof(RespostaSucessoApi<IReadOnlyCollection<NotificacaoResposta>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<RespostaSucessoApi<IReadOnlyCollection<NotificacaoResposta>>>> ListarHistoricoAsync(
-        [FromQuery] Guid? responsavelId,
+        [FromQuery] Guid? responsavelUsuarioId,
         [FromQuery] int limite = 50,
         CancellationToken cancellationToken = default)
     {
-        if (!User.TentarObterUsuarioId(out var usuarioIdAutenticado))
-        {
-            throw new UnauthorizedAccessException("Nao foi possivel identificar o usuario autenticado.");
-        }
+        var contexto = User.ObterContextoUsuarioAutenticado();
+        var responsavelConsulta = responsavelUsuarioId;
 
-        var usuarioAdministrador = User.PossuiPerfilAdministrador();
-        var responsavelConsulta = responsavelId;
-
-        if (!usuarioAdministrador)
+        if (!contexto.EhAdministrativo)
         {
-            if (responsavelId.HasValue && responsavelId.Value != usuarioIdAutenticado)
+            if (responsavelUsuarioId.HasValue && responsavelUsuarioId.Value != contexto.UsuarioId)
             {
                 return Forbid();
             }
 
-            responsavelConsulta = usuarioIdAutenticado;
+            responsavelConsulta = contexto.UsuarioId;
+        }
+        else if (contexto.EhAdmin
+            && responsavelUsuarioId.HasValue
+            && responsavelUsuarioId.Value != contexto.UsuarioId)
+        {
+            var usuarioConsulta = await consultaUsuariosCasoDeUso.ObterPorIdAsync(
+                responsavelUsuarioId.Value,
+                cancellationToken);
+
+            if (!usuarioConsulta.AreaIds.Any(contexto.AreaIds.Contains))
+            {
+                return Forbid();
+            }
         }
 
         var entrada = new ConsultaHistoricoNotificacoesEntrada
         {
-            ResponsavelId = responsavelConsulta,
+            ResponsavelUsuarioId = responsavelConsulta,
             Limite = limite
         };
 

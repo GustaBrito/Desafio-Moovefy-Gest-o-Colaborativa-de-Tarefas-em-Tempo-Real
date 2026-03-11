@@ -124,7 +124,7 @@ public sealed class TarefaTestes
             Status = status,
             Prioridade = PrioridadeTarefa.Media,
             ProjetoId = Guid.NewGuid(),
-            ResponsavelId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
             DataCriacao = DateTime.UtcNow.AddDays(-5),
             DataPrazo = dataPrazo
         };

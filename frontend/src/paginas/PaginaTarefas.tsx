@@ -6,6 +6,7 @@ import { TabelaTarefasOperacional } from "../funcionalidades/tarefas/TabelaTaref
 import { usarAutenticacao } from "../ganchos/usarAutenticacao";
 import { usarNotificacao } from "../ganchos/usarNotificacao";
 import { listarProjetos } from "../servicos/servicoProjetos";
+import { listarUsuarios } from "../servicos/servicoUsuarios";
 import {
   atualizarTarefa,
   atualizarStatusTarefa,
@@ -27,7 +28,7 @@ type ChipRapidoTarefas = "atrasadas" | "vence_hoje" | "urgentes";
 interface FiltrosTarefasPersistidos {
   projetoIdFiltro: string;
   statusFiltro: string;
-  responsavelIdFiltro: string;
+  responsavelUsuarioIdFiltro: string;
   dataPrazoInicialFiltro: string;
   dataPrazoFinalFiltro: string;
   campoOrdenacao: CampoOrdenacaoTarefa;
@@ -75,7 +76,7 @@ const opcoesChipsRapidos: Array<{ id: ChipRapidoTarefas; rotulo: string }> = [
 
 export function PaginaTarefas(): JSX.Element {
   const clienteConsulta = useQueryClient();
-  const { sessao } = usarAutenticacao();
+  const { sessao, ehColaborador } = usarAutenticacao();
   const { historicoNotificacoes, mostrarErro, mostrarInformacao, mostrarSucesso } =
     usarNotificacao();
 
@@ -90,8 +91,8 @@ export function PaginaTarefas(): JSX.Element {
   const [statusFiltro, setStatusFiltro] = useState(
     () => filtrosIniciais.current?.statusFiltro ?? ""
   );
-  const [responsavelIdFiltro, setResponsavelIdFiltro] = useState(
-    () => filtrosIniciais.current?.responsavelIdFiltro ?? ""
+  const [responsavelUsuarioIdFiltro, setResponsavelUsuarioIdFiltro] = useState(
+    () => filtrosIniciais.current?.responsavelUsuarioIdFiltro ?? ""
   );
   const [dataPrazoInicialFiltro, setDataPrazoInicialFiltro] = useState(
     () => filtrosIniciais.current?.dataPrazoInicialFiltro ?? ""
@@ -134,7 +135,7 @@ export function PaginaTarefas(): JSX.Element {
     () => ({
       projetoId: projetoIdFiltro || undefined,
       status: statusFiltro ? (Number(statusFiltro) as StatusTarefa) : undefined,
-      responsavelId: responsavelIdFiltro || undefined,
+      responsavelUsuarioId: responsavelUsuarioIdFiltro || undefined,
       dataPrazoInicial: dataPrazoInicialFiltro || undefined,
       dataPrazoFinal: dataPrazoFinalFiltro || undefined,
       campoOrdenacao,
@@ -145,7 +146,7 @@ export function PaginaTarefas(): JSX.Element {
     [
       projetoIdFiltro,
       statusFiltro,
-      responsavelIdFiltro,
+      responsavelUsuarioIdFiltro,
       dataPrazoInicialFiltro,
       dataPrazoFinalFiltro,
       campoOrdenacao,
@@ -165,6 +166,13 @@ export function PaginaTarefas(): JSX.Element {
     queryKey: ["tarefas", filtroConsulta],
     queryFn: () => listarTarefas(filtroConsulta),
     placeholderData: (dadosAnteriores) => dadosAnteriores,
+  });
+
+  const consultaUsuarios = useQuery({
+    queryKey: ["usuarios", "opcoes", "ativos"],
+    queryFn: () => listarUsuarios(true),
+    enabled: !ehColaborador,
+    staleTime: 120000,
   });
 
   const mutacaoCriarTarefa = useMutation({
@@ -231,6 +239,28 @@ export function PaginaTarefas(): JSX.Element {
     () => new Map((consultaProjetos.data ?? []).map((projeto) => [projeto.id, projeto.nome])),
     [consultaProjetos.data]
   );
+
+  const usuariosResponsaveis = useMemo(() => {
+    if (ehColaborador) {
+      if (!sessao) {
+        return [];
+      }
+
+      return [
+        {
+          id: sessao.usuarioId,
+          nome: sessao.nome,
+          email: sessao.email,
+        },
+      ];
+    }
+
+    return (consultaUsuarios.data ?? []).map((usuario) => ({
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+    }));
+  }, [consultaUsuarios.data, ehColaborador, sessao]);
 
   const tarefasServidor = consultaTarefas.data?.itens ?? [];
 
@@ -316,7 +346,7 @@ export function PaginaTarefas(): JSX.Element {
     const filtrosPersistidos: FiltrosTarefasPersistidos = {
       projetoIdFiltro,
       statusFiltro,
-      responsavelIdFiltro,
+      responsavelUsuarioIdFiltro,
       dataPrazoInicialFiltro,
       dataPrazoFinalFiltro,
       campoOrdenacao,
@@ -330,7 +360,7 @@ export function PaginaTarefas(): JSX.Element {
   }, [
     projetoIdFiltro,
     statusFiltro,
-    responsavelIdFiltro,
+    responsavelUsuarioIdFiltro,
     dataPrazoInicialFiltro,
     dataPrazoFinalFiltro,
     campoOrdenacao,
@@ -350,7 +380,7 @@ export function PaginaTarefas(): JSX.Element {
     const assinaturaAtual = tarefasServidor
       .map(
         (tarefa) =>
-          `${tarefa.id}:${tarefa.status}:${tarefa.responsavelId}:${tarefa.dataConclusao ?? ""}`
+          `${tarefa.id}:${tarefa.status}:${tarefa.responsavelUsuarioId}:${tarefa.dataConclusao ?? ""}`
       )
       .join("|");
 
@@ -407,7 +437,7 @@ export function PaginaTarefas(): JSX.Element {
     const filtroFavorito: FiltrosTarefasPersistidos = {
       projetoIdFiltro,
       statusFiltro,
-      responsavelIdFiltro,
+      responsavelUsuarioIdFiltro,
       dataPrazoInicialFiltro,
       dataPrazoFinalFiltro,
       campoOrdenacao,
@@ -436,7 +466,7 @@ export function PaginaTarefas(): JSX.Element {
       const filtroFavorito = JSON.parse(valor) as FiltrosTarefasPersistidos;
       setProjetoIdFiltro(filtroFavorito.projetoIdFiltro);
       setStatusFiltro(filtroFavorito.statusFiltro);
-      setResponsavelIdFiltro(filtroFavorito.responsavelIdFiltro);
+      setResponsavelUsuarioIdFiltro(filtroFavorito.responsavelUsuarioIdFiltro);
       setDataPrazoInicialFiltro(filtroFavorito.dataPrazoInicialFiltro);
       setDataPrazoFinalFiltro(filtroFavorito.dataPrazoFinalFiltro);
       setCampoOrdenacao(filtroFavorito.campoOrdenacao);
@@ -464,7 +494,7 @@ export function PaginaTarefas(): JSX.Element {
   function limparFiltros(): void {
     setProjetoIdFiltro("");
     setStatusFiltro("");
-    setResponsavelIdFiltro("");
+    setResponsavelUsuarioIdFiltro("");
     setDataPrazoInicialFiltro("");
     setDataPrazoFinalFiltro("");
     setCampoOrdenacao(CampoOrdenacaoTarefa.DataPrazo);
@@ -481,7 +511,7 @@ export function PaginaTarefas(): JSX.Element {
   function aplicarMinhaVisao(): void {
     setProjetoIdFiltro("");
     setStatusFiltro("");
-    setResponsavelIdFiltro(sessao?.usuarioId ?? "");
+    setResponsavelUsuarioIdFiltro(sessao?.usuarioId ?? "");
     setDataPrazoInicialFiltro("");
     setDataPrazoFinalFiltro("");
     setTextoBusca("");
@@ -493,7 +523,7 @@ export function PaginaTarefas(): JSX.Element {
     const hoje = converterParaDataInput(new Date());
     setProjetoIdFiltro("");
     setStatusFiltro(String(StatusTarefa.EmAndamento));
-    setResponsavelIdFiltro("");
+    setResponsavelUsuarioIdFiltro("");
     setDataPrazoInicialFiltro(hoje);
     setDataPrazoFinalFiltro(hoje);
     setTextoBusca("");
@@ -519,6 +549,11 @@ export function PaginaTarefas(): JSX.Element {
     tarefa: TarefaResposta,
     novoStatus: StatusTarefa
   ): Promise<void> {
+    if (ehColaborador && tarefa.responsavelUsuarioId !== sessao?.usuarioId) {
+      mostrarErro("Colaborador pode alterar status apenas das proprias tarefas.");
+      return;
+    }
+
     if (novoStatus === tarefa.status) {
       return;
     }
@@ -532,6 +567,11 @@ export function PaginaTarefas(): JSX.Element {
   }
 
   async function excluirTarefaComConfirmacao(tarefa: TarefaResposta): Promise<void> {
+    if (ehColaborador) {
+      mostrarErro("Colaborador nao pode excluir tarefas.");
+      return;
+    }
+
     const confirmouExclusao = window.confirm(
       `Deseja realmente excluir a tarefa "${tarefa.titulo}"?`
     );
@@ -548,6 +588,11 @@ export function PaginaTarefas(): JSX.Element {
   }
 
   function iniciarEdicaoTarefa(tarefa: TarefaResposta): void {
+    if (ehColaborador) {
+      mostrarErro("Colaborador nao pode editar tarefas.");
+      return;
+    }
+
     setTarefaEmEdicao(tarefa);
   }
 
@@ -572,6 +617,11 @@ export function PaginaTarefas(): JSX.Element {
   }
 
   async function aplicarStatusEmLote(): Promise<void> {
+    if (ehColaborador) {
+      mostrarErro("Colaborador nao pode executar atualizacao em lote.");
+      return;
+    }
+
     if (!statusLote) {
       mostrarErro("Selecione um status para aplicar em lote.");
       return;
@@ -627,6 +677,11 @@ export function PaginaTarefas(): JSX.Element {
   }
 
   async function excluirSelecionadasEmLote(): Promise<void> {
+    if (ehColaborador) {
+      mostrarErro("Colaborador nao pode executar exclusao em lote.");
+      return;
+    }
+
     if (idsSelecionados.length === 0) {
       mostrarErro("Selecione ao menos uma tarefa para exclusao em lote.");
       return;
@@ -681,7 +736,8 @@ export function PaginaTarefas(): JSX.Element {
       "descricao",
       "status",
       "projeto",
-      "responsavel_id",
+      "responsavel_usuario_id",
+      "responsavel_nome",
       "prazo",
       "atrasada",
     ];
@@ -692,7 +748,8 @@ export function PaginaTarefas(): JSX.Element {
       tarefa.descricao ?? "",
       nomesStatus[tarefa.status],
       mapaProjetos.get(tarefa.projetoId) ?? tarefa.projetoId,
-      tarefa.responsavelId,
+      tarefa.responsavelUsuarioId,
+      tarefa.responsavelNome ?? "",
       tarefa.dataPrazo,
       tarefa.estaAtrasada ? "sim" : "nao",
     ]);
@@ -819,9 +876,20 @@ export function PaginaTarefas(): JSX.Element {
             </select>
           </label>
 
-          <label htmlFor="filtroResponsavelId">
+          <label htmlFor="filtroresponsavelUsuarioId">
             Responsavel
-            <input id="filtroResponsavelId" type="text" value={responsavelIdFiltro} onChange={(evento) => setResponsavelIdFiltro(evento.target.value)} />
+            <select
+              id="filtroresponsavelUsuarioId"
+              value={responsavelUsuarioIdFiltro}
+              onChange={(evento) => setResponsavelUsuarioIdFiltro(evento.target.value)}
+            >
+              <option value="">Todos</option>
+              {usuariosResponsaveis.map((usuario) => (
+                <option key={usuario.id} value={usuario.id}>
+                  {usuario.nome}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label htmlFor="filtroDataPrazoInicial">
@@ -901,56 +969,67 @@ export function PaginaTarefas(): JSX.Element {
       </article>
 
       <div className="grade-duas-colunas grade-tarefas-principal">
-        <FormularioTarefa
-          projetos={consultaProjetos.data ?? []}
-          responsavelIdPadrao={sessao?.usuarioId ?? ""}
-          emEnvio={mutacaoCriarTarefa.isPending || mutacaoAtualizarTarefa.isPending}
-          titulo={tarefaEmEdicao ? "Editar tarefa" : "Nova tarefa"}
-          rotuloBotao={tarefaEmEdicao ? "Atualizar tarefa" : "Salvar tarefa"}
-          rotuloBotaoEmEnvio={tarefaEmEdicao ? "Atualizando..." : "Salvando..."}
-          permitirPrazoPassado={Boolean(tarefaEmEdicao)}
-          valoresIniciais={
-            tarefaEmEdicao
-              ? {
-                  titulo: tarefaEmEdicao.titulo,
-                  descricao: tarefaEmEdicao.descricao ?? "",
-                  prioridade: tarefaEmEdicao.prioridade,
-                  projetoId: tarefaEmEdicao.projetoId,
-                  responsavelId: tarefaEmEdicao.responsavelId,
-                  dataPrazo: converterIsoParaDataInput(tarefaEmEdicao.dataPrazo),
-                }
-              : undefined
-          }
-          aoCancelarEdicao={
-            tarefaEmEdicao ? () => setTarefaEmEdicao(null) : undefined
-          }
-          aoEnviar={async (dados) => {
-            if (tarefaEmEdicao) {
-              await mutacaoAtualizarTarefa.mutateAsync({
-                id: tarefaEmEdicao.id,
-                dados: {
-                  titulo: dados.titulo,
-                  descricao: dados.descricao || null,
-                  status: tarefaEmEdicao.status,
-                  prioridade: dados.prioridade,
-                  responsavelId: dados.responsavelId,
-                  dataPrazo: new Date(`${dados.dataPrazo}T23:59:59Z`).toISOString(),
-                },
-              });
-              setTarefaEmEdicao(null);
-              return;
+        {!ehColaborador ? (
+          <FormularioTarefa
+            projetos={consultaProjetos.data ?? []}
+            usuariosResponsaveis={usuariosResponsaveis}
+            responsavelUsuarioIdPadrao={sessao?.usuarioId ?? ""}
+            emEnvio={mutacaoCriarTarefa.isPending || mutacaoAtualizarTarefa.isPending}
+            titulo={tarefaEmEdicao ? "Editar tarefa" : "Nova tarefa"}
+            rotuloBotao={tarefaEmEdicao ? "Atualizar tarefa" : "Salvar tarefa"}
+            rotuloBotaoEmEnvio={tarefaEmEdicao ? "Atualizando..." : "Salvando..."}
+            permitirPrazoPassado={Boolean(tarefaEmEdicao)}
+            valoresIniciais={
+              tarefaEmEdicao
+                ? {
+                    titulo: tarefaEmEdicao.titulo,
+                    descricao: tarefaEmEdicao.descricao ?? "",
+                    prioridade: tarefaEmEdicao.prioridade,
+                    projetoId: tarefaEmEdicao.projetoId,
+                    responsavelUsuarioId: tarefaEmEdicao.responsavelUsuarioId,
+                    dataPrazo: converterIsoParaDataInput(tarefaEmEdicao.dataPrazo),
+                  }
+                : undefined
             }
+            aoCancelarEdicao={
+              tarefaEmEdicao ? () => setTarefaEmEdicao(null) : undefined
+            }
+            aoEnviar={async (dados) => {
+              if (tarefaEmEdicao) {
+                await mutacaoAtualizarTarefa.mutateAsync({
+                  id: tarefaEmEdicao.id,
+                  dados: {
+                    titulo: dados.titulo,
+                    descricao: dados.descricao || null,
+                    status: tarefaEmEdicao.status,
+                    prioridade: dados.prioridade,
+                    responsavelUsuarioId: dados.responsavelUsuarioId,
+                    dataPrazo: new Date(`${dados.dataPrazo}T23:59:59Z`).toISOString(),
+                  },
+                });
+                setTarefaEmEdicao(null);
+                return;
+              }
 
-            await mutacaoCriarTarefa.mutateAsync({
-              titulo: dados.titulo,
-              descricao: dados.descricao || null,
-              prioridade: dados.prioridade,
-              projetoId: dados.projetoId,
-              responsavelId: dados.responsavelId,
-              dataPrazo: new Date(`${dados.dataPrazo}T23:59:59Z`).toISOString(),
-            });
-          }}
-        />
+              await mutacaoCriarTarefa.mutateAsync({
+                titulo: dados.titulo,
+                descricao: dados.descricao || null,
+                prioridade: dados.prioridade,
+                projetoId: dados.projetoId,
+                responsavelUsuarioId: dados.responsavelUsuarioId,
+                dataPrazo: new Date(`${dados.dataPrazo}T23:59:59Z`).toISOString(),
+              });
+            }}
+          />
+        ) : (
+          <article className="cartao-listagem">
+            <h3>Atualizacao de status</h3>
+            <p>
+              Seu perfil possui permissao para atualizar apenas o status das tarefas
+              atribuidas a voce.
+            </p>
+          </article>
+        )}
 
         <article className="cartao-listagem cartao-listagem-tarefas-modernizado">
           <header className="cabecalho-listagem-tarefas">
@@ -977,7 +1056,7 @@ export function PaginaTarefas(): JSX.Element {
                 id="statusLoteTarefas"
                 value={statusLote}
                 onChange={(evento) => setStatusLote(evento.target.value)}
-                disabled={executandoAcaoLote}
+                disabled={executandoAcaoLote || ehColaborador}
               >
                 <option value="">Selecione</option>
                 {Object.values(StatusTarefa)
@@ -993,7 +1072,7 @@ export function PaginaTarefas(): JSX.Element {
               type="button"
               className="botao-secundario"
               onClick={() => void aplicarStatusEmLote()}
-              disabled={executandoAcaoLote || totalSelecionadas === 0}
+              disabled={executandoAcaoLote || totalSelecionadas === 0 || ehColaborador}
             >
               Aplicar em selecionadas
             </button>
@@ -1001,7 +1080,7 @@ export function PaginaTarefas(): JSX.Element {
               type="button"
               className="botao-perigo"
               onClick={() => void excluirSelecionadasEmLote()}
-              disabled={executandoAcaoLote || totalSelecionadas === 0}
+              disabled={executandoAcaoLote || totalSelecionadas === 0 || ehColaborador}
             >
               Excluir selecionadas
             </button>
@@ -1048,6 +1127,8 @@ export function PaginaTarefas(): JSX.Element {
                   carregandoAtualizacaoStatus={mutacaoAtualizarStatus.isPending}
                   carregandoEdicao={mutacaoAtualizarTarefa.isPending}
                   carregandoExclusao={mutacaoExcluirTarefa.isPending}
+                  permitirEditar={!ehColaborador}
+                  permitirExcluir={!ehColaborador}
                   campoOrdenacao={campoOrdenacao}
                   direcaoOrdenacao={direcaoOrdenacao}
                   obterStatusPermitidos={obterStatusPermitidos}
@@ -1174,3 +1255,5 @@ function obterMensagemErro(excecao: unknown, mensagemPadrao: string): string {
 
   return mensagemPadrao;
 }
+
+

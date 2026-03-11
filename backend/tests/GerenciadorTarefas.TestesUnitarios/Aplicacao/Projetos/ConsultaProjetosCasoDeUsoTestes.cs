@@ -7,11 +7,20 @@ namespace GerenciadorTarefas.TestesUnitarios.Aplicacao.Projetos;
 public sealed class ConsultaProjetosCasoDeUsoTestes
 {
     private readonly RepositorioProjetoFalso repositorioProjeto = new();
+    private readonly RepositorioAreaFalso repositorioArea = new();
+    private readonly RepositorioUsuarioFalso repositorioUsuario = new();
+    private readonly Area areaPadrao = new()
+    {
+        Id = Guid.NewGuid(),
+        Nome = "Area Teste",
+        Ativa = true
+    };
     private readonly ConsultaProjetosCasoDeUso casoDeUso;
 
     public ConsultaProjetosCasoDeUsoTestes()
     {
-        casoDeUso = new ConsultaProjetosCasoDeUso(repositorioProjeto);
+        repositorioArea.Areas.Add(areaPadrao);
+        casoDeUso = new ConsultaProjetosCasoDeUso(repositorioProjeto, repositorioArea, repositorioUsuario);
     }
 
     [Fact]
@@ -24,12 +33,14 @@ public sealed class ConsultaProjetosCasoDeUsoTestes
                 Id = Guid.NewGuid(),
                 Nome = "Projeto 1",
                 Descricao = "Descricao 1",
+                AreaId = areaPadrao.Id,
                 DataCriacao = DateTime.UtcNow.AddDays(-3)
             },
             new Projeto
             {
                 Id = Guid.NewGuid(),
                 Nome = "Projeto 2",
+                AreaId = areaPadrao.Id,
                 DataCriacao = DateTime.UtcNow.AddDays(-1)
             }
         ]);
@@ -64,6 +75,7 @@ public sealed class ConsultaProjetosCasoDeUsoTestes
             Id = Guid.NewGuid(),
             Nome = "Projeto detalhado",
             Descricao = "Descricao detalhada",
+            AreaId = areaPadrao.Id,
             DataCriacao = DateTime.UtcNow.AddDays(-4)
         };
         repositorioProjeto.Projetos.Add(projeto);

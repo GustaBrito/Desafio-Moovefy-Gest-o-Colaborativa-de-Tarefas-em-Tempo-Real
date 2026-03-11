@@ -2,6 +2,7 @@ using GerenciadorTarefas.Aplicacao.Contratos.Projetos;
 using GerenciadorTarefas.Aplicacao.Modelos.Projetos;
 using GerenciadorTarefas.Api.Contratos.Requisicoes.Projetos;
 using GerenciadorTarefas.Api.Contratos.Respostas;
+using GerenciadorTarefas.Api.Seguranca;
 using GerenciadorTarefas.Api.Servicos.Cache;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -38,10 +39,15 @@ public sealed class ControladorProjetos : ControllerBase
     public async Task<ActionResult<RespostaSucessoApi<IReadOnlyCollection<ProjetoResposta>>>> ListarProjetosAsync(
         CancellationToken cancellationToken)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
+        var chaveCache = $"{ChavesCacheConsulta.ObterListaProjetos()}:u:{contextoUsuario.UsuarioId:N}";
+
         var projetos = await servicoCacheConsulta.ObterOuCriarAsync(
-            ChavesCacheConsulta.ObterListaProjetos(),
+            chaveCache,
             PoliticasCacheConsulta.DuracaoProjetos,
-            _ => consultaProjetosCasoDeUso.ListarAsync(cancellationToken),
+            _ => consultaProjetosCasoDeUso.ListarAsync(
+                contextoUsuario.EhSuperAdmin ? null : contextoUsuario.AreaIds,
+                cancellationToken),
             cancellationToken);
 
         var resposta = new RespostaSucessoApi<IReadOnlyCollection<ProjetoResposta>>
@@ -60,11 +66,17 @@ public sealed class ControladorProjetos : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
         var projeto = await servicoCacheConsulta.ObterOuCriarAsync(
-            ChavesCacheConsulta.ObterProjetoPorId(id),
+            $"{ChavesCacheConsulta.ObterProjetoPorId(id)}:u:{contextoUsuario.UsuarioId:N}",
             PoliticasCacheConsulta.DuracaoProjetos,
             _ => consultaProjetosCasoDeUso.ObterPorIdAsync(id, cancellationToken),
             cancellationToken);
+
+        if (!contextoUsuario.EhSuperAdmin && !contextoUsuario.AreaIds.Contains(projeto.AreaId))
+        {
+            return Forbid();
+        }
 
         var resposta = new RespostaSucessoApi<ProjetoResposta>
         {
@@ -82,10 +94,24 @@ public sealed class ControladorProjetos : ControllerBase
         [FromBody] CriarProjetoRequisicao requisicao,
         CancellationToken cancellationToken)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
+        if (contextoUsuario.EhColaborador)
+        {
+            return Forbid();
+        }
+
+        if (!contextoUsuario.EhSuperAdmin && !contextoUsuario.AreaIds.Contains(requisicao.AreaId))
+        {
+            return Forbid();
+        }
+
         var entrada = new CriarProjetoEntrada
         {
             Nome = requisicao.Nome,
-            Descricao = requisicao.Descricao
+            Descricao = requisicao.Descricao,
+            AreaId = requisicao.AreaId,
+            GestorUsuarioId = requisicao.GestorUsuarioId,
+            CriadoPorUsuarioId = contextoUsuario.UsuarioId
         };
 
         var projetoCriado = await criarProjetoCasoDeUso.ExecutarAsync(entrada, cancellationToken);
@@ -108,10 +134,29 @@ public sealed class ControladorProjetos : ControllerBase
         [FromBody] AtualizarProjetoRequisicao requisicao,
         CancellationToken cancellationToken)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
+        if (contextoUsuario.EhColaborador)
+        {
+            return Forbid();
+        }
+
+        var projetoAtual = await consultaProjetosCasoDeUso.ObterPorIdAsync(id, cancellationToken);
+        if (!contextoUsuario.EhSuperAdmin && !contextoUsuario.AreaIds.Contains(projetoAtual.AreaId))
+        {
+            return Forbid();
+        }
+
+        if (!contextoUsuario.EhSuperAdmin && !contextoUsuario.AreaIds.Contains(requisicao.AreaId))
+        {
+            return Forbid();
+        }
+
         var entrada = new AtualizarProjetoEntrada
         {
             Nome = requisicao.Nome,
-            Descricao = requisicao.Descricao
+            Descricao = requisicao.Descricao,
+            AreaId = requisicao.AreaId,
+            GestorUsuarioId = requisicao.GestorUsuarioId
         };
 
         var projetoAtualizado = await atualizarProjetoCasoDeUso.ExecutarAsync(id, entrada, cancellationToken);
@@ -133,6 +178,18 @@ public sealed class ControladorProjetos : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
+        var contextoUsuario = User.ObterContextoUsuarioAutenticado();
+        if (contextoUsuario.EhColaborador)
+        {
+            return Forbid();
+        }
+
+        var projetoAtual = await consultaProjetosCasoDeUso.ObterPorIdAsync(id, cancellationToken);
+        if (!contextoUsuario.EhSuperAdmin && !contextoUsuario.AreaIds.Contains(projetoAtual.AreaId))
+        {
+            return Forbid();
+        }
+
         await excluirProjetoCasoDeUso.ExecutarAsync(id, cancellationToken);
         InvalidarCacheProjetos();
 
