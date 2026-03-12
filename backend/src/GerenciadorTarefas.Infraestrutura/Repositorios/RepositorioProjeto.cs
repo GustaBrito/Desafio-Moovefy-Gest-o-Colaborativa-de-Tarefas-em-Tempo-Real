@@ -20,6 +20,8 @@ public sealed class RepositorioProjeto : IRepositorioProjeto
     {
         var consulta = contextoBancoDados.Projetos
             .AsNoTracking()
+            .Include(projeto => projeto.AreasVinculadas)
+            .Include(projeto => projeto.UsuariosVinculados)
             .AsQueryable();
 
         if (areaIdsPermitidas is not null)
@@ -29,7 +31,9 @@ public sealed class RepositorioProjeto : IRepositorioProjeto
                 return [];
             }
 
-            consulta = consulta.Where(projeto => areaIdsPermitidas.Contains(projeto.AreaId));
+            consulta = consulta.Where(projeto =>
+                areaIdsPermitidas.Contains(projeto.AreaId)
+                || projeto.AreasVinculadas.Any(vinculo => areaIdsPermitidas.Contains(vinculo.AreaId)));
         }
 
         return await consulta
@@ -41,6 +45,8 @@ public sealed class RepositorioProjeto : IRepositorioProjeto
     {
         return await contextoBancoDados.Projetos
             .AsNoTracking()
+            .Include(projeto => projeto.AreasVinculadas)
+            .Include(projeto => projeto.UsuariosVinculados)
             .FirstOrDefaultAsync(projeto => projeto.Id == id, cancellationToken);
     }
 
@@ -55,8 +61,82 @@ public sealed class RepositorioProjeto : IRepositorioProjeto
 
         return await contextoBancoDados.Projetos
             .AsNoTracking()
+            .Include(projeto => projeto.AreasVinculadas)
+            .Include(projeto => projeto.UsuariosVinculados)
             .Where(projeto => ids.Contains(projeto.Id))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task SincronizarAreasVinculadasAsync(
+        Guid projetoId,
+        IReadOnlyCollection<Guid> areaIds,
+        CancellationToken cancellationToken = default)
+    {
+        var areaIdsNormalizados = areaIds.Distinct().ToHashSet();
+        var vinculosExistentes = await contextoBancoDados.ProjetosAreas
+            .Where(vinculo => vinculo.ProjetoId == projetoId)
+            .ToListAsync(cancellationToken);
+
+        var vinculosParaRemover = vinculosExistentes
+            .Where(vinculo => !areaIdsNormalizados.Contains(vinculo.AreaId))
+            .ToArray();
+        if (vinculosParaRemover.Length > 0)
+        {
+            contextoBancoDados.ProjetosAreas.RemoveRange(vinculosParaRemover);
+        }
+
+        var areaIdsExistentes = vinculosExistentes
+            .Select(vinculo => vinculo.AreaId)
+            .ToHashSet();
+        var vinculosParaAdicionar = areaIdsNormalizados
+            .Where(areaId => !areaIdsExistentes.Contains(areaId))
+            .Select(areaId => new ProjetoArea
+            {
+                ProjetoId = projetoId,
+                AreaId = areaId
+            })
+            .ToArray();
+
+        if (vinculosParaAdicionar.Length > 0)
+        {
+            await contextoBancoDados.ProjetosAreas.AddRangeAsync(vinculosParaAdicionar, cancellationToken);
+        }
+    }
+
+    public async Task SincronizarUsuariosVinculadosAsync(
+        Guid projetoId,
+        IReadOnlyCollection<Guid> usuarioIds,
+        CancellationToken cancellationToken = default)
+    {
+        var usuarioIdsNormalizados = usuarioIds.Distinct().ToHashSet();
+        var vinculosExistentes = await contextoBancoDados.ProjetosUsuariosVinculados
+            .Where(vinculo => vinculo.ProjetoId == projetoId)
+            .ToListAsync(cancellationToken);
+
+        var vinculosParaRemover = vinculosExistentes
+            .Where(vinculo => !usuarioIdsNormalizados.Contains(vinculo.UsuarioId))
+            .ToArray();
+        if (vinculosParaRemover.Length > 0)
+        {
+            contextoBancoDados.ProjetosUsuariosVinculados.RemoveRange(vinculosParaRemover);
+        }
+
+        var usuarioIdsExistentes = vinculosExistentes
+            .Select(vinculo => vinculo.UsuarioId)
+            .ToHashSet();
+        var vinculosParaAdicionar = usuarioIdsNormalizados
+            .Where(usuarioId => !usuarioIdsExistentes.Contains(usuarioId))
+            .Select(usuarioId => new ProjetoUsuarioVinculado
+            {
+                ProjetoId = projetoId,
+                UsuarioId = usuarioId
+            })
+            .ToArray();
+
+        if (vinculosParaAdicionar.Length > 0)
+        {
+            await contextoBancoDados.ProjetosUsuariosVinculados.AddRangeAsync(vinculosParaAdicionar, cancellationToken);
+        }
     }
 
     public async Task AdicionarAsync(Projeto projeto, CancellationToken cancellationToken = default)

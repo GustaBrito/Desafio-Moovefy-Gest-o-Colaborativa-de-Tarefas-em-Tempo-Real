@@ -21,6 +21,21 @@ public sealed class ControladorAutenticacao : ControllerBase
     }
 
     [AllowAnonymous]
+    [HttpGet("saude")]
+    [ProducesResponseType(typeof(RespostaSucessoApi<object>), StatusCodes.Status200OK)]
+    public ActionResult<RespostaSucessoApi<object>> ObterSaude()
+    {
+        var resposta = new RespostaSucessoApi<object>
+        {
+            Mensagem = "API disponivel.",
+            Dados = new { status = "ok" },
+            CodigoRastreio = HttpContext.TraceIdentifier
+        };
+
+        return Ok(resposta);
+    }
+
+    [AllowAnonymous]
     [HttpPost("login")]
     [EnableRateLimiting(ConfiguracaoRateLimiting.NomePoliticaRateLimitLogin)]
     [ProducesResponseType(typeof(RespostaSucessoApi<LoginResposta>), StatusCodes.Status200OK)]

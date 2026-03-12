@@ -50,40 +50,76 @@ public sealed class CriarProjetoCasoDeUso : ICriarProjetoCasoDeUso
             throw new ArgumentException("A descricao do projeto deve ter no maximo 1000 caracteres.", nameof(entrada));
         }
 
-        if (entrada.AreaId == Guid.Empty)
+        var areaIds = entrada.AreaIds
+            .Where(areaId => areaId != Guid.Empty)
+            .Distinct()
+            .ToList();
+        if (entrada.AreaIdLegado.HasValue && entrada.AreaIdLegado.Value != Guid.Empty && !areaIds.Contains(entrada.AreaIdLegado.Value))
+        {
+            areaIds.Insert(0, entrada.AreaIdLegado.Value);
+        }
+
+        if (areaIds.Count == 0)
         {
             throw new ArgumentException("A area do projeto deve ser informada.", nameof(entrada));
         }
 
-        var area = await repositorioArea.ObterPorIdAsync(entrada.AreaId, cancellationToken);
-        if (area is null || !area.Ativa)
+        var areas = await repositorioArea.ListarPorIdsAsync(areaIds, cancellationToken);
+        var areasPorId = areas.ToDictionary(area => area.Id);
+        var areaInvalida = areaIds.Any(areaId => !areasPorId.TryGetValue(areaId, out var area) || !area.Ativa);
+        if (areaInvalida)
         {
-            throw new InvalidOperationException("A area informada para o projeto e invalida ou inativa.");
+            throw new InvalidOperationException("Uma ou mais areas informadas para o projeto sao invalidas ou inativas.");
         }
 
-        Usuario? gestor = null;
-        if (entrada.GestorUsuarioId.HasValue)
+        var usuarioIdsVinculados = entrada.UsuarioIdsVinculados
+            .Where(usuarioId => usuarioId != Guid.Empty)
+            .Distinct()
+            .ToList();
+        if (entrada.GestorUsuarioId.HasValue && !usuarioIdsVinculados.Contains(entrada.GestorUsuarioId.Value))
         {
-            gestor = await repositorioUsuario.ObterPorIdAsync(entrada.GestorUsuarioId.Value, cancellationToken);
-            if (gestor is null || !gestor.Ativo)
-            {
-                throw new InvalidOperationException("O gestor informado e invalido ou inativo.");
-            }
+            usuarioIdsVinculados.Add(entrada.GestorUsuarioId.Value);
         }
+        if (entrada.CriadoPorUsuarioId.HasValue && !usuarioIdsVinculados.Contains(entrada.CriadoPorUsuarioId.Value))
+        {
+            usuarioIdsVinculados.Add(entrada.CriadoPorUsuarioId.Value);
+        }
+
+        var usuariosVinculados = usuarioIdsVinculados.Count == 0
+            ? []
+            : await repositorioUsuario.ObterPorIdsAsync(usuarioIdsVinculados, cancellationToken);
+        var usuariosPorId = usuariosVinculados.ToDictionary(usuario => usuario.Id);
+        var usuarioInvalido = usuarioIdsVinculados.Any(usuarioId =>
+            !usuariosPorId.TryGetValue(usuarioId, out var usuario) || !usuario.Ativo);
+        if (usuarioInvalido)
+        {
+            throw new InvalidOperationException("Um ou mais usuarios vinculados sao invalidos ou inativos.");
+        }
+
+        var gestorUsuarioId = entrada.GestorUsuarioId
+            ?? (usuarioIdsVinculados.Count > 0 ? usuarioIdsVinculados[0] : null);
 
         var projeto = new Projeto
         {
             Id = Guid.NewGuid(),
             Nome = nomeNormalizado,
             Descricao = descricaoNormalizada,
-            AreaId = entrada.AreaId,
+            AreaId = areaIds[0],
             CriadoPorUsuarioId = entrada.CriadoPorUsuarioId,
-            GestorUsuarioId = entrada.GestorUsuarioId,
+            GestorUsuarioId = gestorUsuarioId,
             DataCriacao = DateTime.UtcNow
         };
 
         await repositorioProjeto.AdicionarAsync(projeto, cancellationToken);
         await repositorioProjeto.SalvarAlteracoesAsync(cancellationToken);
+        await repositorioProjeto.SincronizarAreasVinculadasAsync(projeto.Id, areaIds, cancellationToken);
+        await repositorioProjeto.SincronizarUsuariosVinculadosAsync(projeto.Id, usuarioIdsVinculados, cancellationToken);
+        await repositorioProjeto.SalvarAlteracoesAsync(cancellationToken);
+
+        var areaPrincipal = areasPorId[projeto.AreaId];
+        var gestorNome = gestorUsuarioId.HasValue && usuariosPorId.TryGetValue(gestorUsuarioId.Value, out var gestor)
+            ? gestor.Nome
+            : null;
 
         return new ProjetoResposta
         {
@@ -91,9 +127,16 @@ public sealed class CriarProjetoCasoDeUso : ICriarProjetoCasoDeUso
             Nome = projeto.Nome,
             Descricao = projeto.Descricao,
             AreaId = projeto.AreaId,
-            AreaNome = area.Nome,
+            AreaNome = areaPrincipal.Nome,
+            AreaIds = areaIds,
+            AreasNomes = areaIds.Select(areaId => areasPorId[areaId].Nome).ToList(),
             GestorUsuarioId = projeto.GestorUsuarioId,
-            GestorNome = gestor?.Nome,
+            GestorNome = gestorNome,
+            UsuarioIdsVinculados = usuarioIdsVinculados,
+            UsuariosNomesVinculados = usuarioIdsVinculados
+                .Where(usuarioId => usuariosPorId.ContainsKey(usuarioId))
+                .Select(usuarioId => usuariosPorId[usuarioId].Nome)
+                .ToList(),
             DataCriacao = projeto.DataCriacao
         };
     }

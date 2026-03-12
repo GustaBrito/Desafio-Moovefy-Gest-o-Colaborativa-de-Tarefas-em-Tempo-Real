@@ -73,7 +73,7 @@ public sealed class ControladorProjetos : ControllerBase
             _ => consultaProjetosCasoDeUso.ObterPorIdAsync(id, cancellationToken),
             cancellationToken);
 
-        if (!contextoUsuario.EhSuperAdmin && !contextoUsuario.AreaIds.Contains(projeto.AreaId))
+        if (!UsuarioPodeAcessarProjeto(contextoUsuario, projeto))
         {
             return Forbid();
         }
@@ -95,21 +95,31 @@ public sealed class ControladorProjetos : ControllerBase
         CancellationToken cancellationToken)
     {
         var contextoUsuario = User.ObterContextoUsuarioAutenticado();
+        var areaIds = NormalizarAreaIds(requisicao.AreaIds, requisicao.AreaId);
+        var usuarioIdsVinculados = NormalizarIds(requisicao.UsuarioIdsVinculados);
+
         if (contextoUsuario.EhColaborador)
         {
             return Forbid();
         }
 
-        if (!contextoUsuario.EhSuperAdmin && !contextoUsuario.AreaIds.Contains(requisicao.AreaId))
+        if (!contextoUsuario.EhSuperAdmin && areaIds.Any(areaId => !contextoUsuario.AreaIds.Contains(areaId)))
         {
             return Forbid();
+        }
+
+        if (!usuarioIdsVinculados.Contains(contextoUsuario.UsuarioId))
+        {
+            usuarioIdsVinculados.Add(contextoUsuario.UsuarioId);
         }
 
         var entrada = new CriarProjetoEntrada
         {
             Nome = requisicao.Nome,
             Descricao = requisicao.Descricao,
-            AreaId = requisicao.AreaId,
+            AreaIds = areaIds,
+            AreaIdLegado = requisicao.AreaId,
+            UsuarioIdsVinculados = usuarioIdsVinculados,
             GestorUsuarioId = requisicao.GestorUsuarioId,
             CriadoPorUsuarioId = contextoUsuario.UsuarioId
         };
@@ -135,18 +145,21 @@ public sealed class ControladorProjetos : ControllerBase
         CancellationToken cancellationToken)
     {
         var contextoUsuario = User.ObterContextoUsuarioAutenticado();
+        var areaIds = NormalizarAreaIds(requisicao.AreaIds, requisicao.AreaId);
+        var usuarioIdsVinculados = NormalizarIds(requisicao.UsuarioIdsVinculados);
+
         if (contextoUsuario.EhColaborador)
         {
             return Forbid();
         }
 
         var projetoAtual = await consultaProjetosCasoDeUso.ObterPorIdAsync(id, cancellationToken);
-        if (!contextoUsuario.EhSuperAdmin && !contextoUsuario.AreaIds.Contains(projetoAtual.AreaId))
+        if (!UsuarioPodeAcessarProjeto(contextoUsuario, projetoAtual))
         {
             return Forbid();
         }
 
-        if (!contextoUsuario.EhSuperAdmin && !contextoUsuario.AreaIds.Contains(requisicao.AreaId))
+        if (!contextoUsuario.EhSuperAdmin && areaIds.Any(areaId => !contextoUsuario.AreaIds.Contains(areaId)))
         {
             return Forbid();
         }
@@ -155,7 +168,9 @@ public sealed class ControladorProjetos : ControllerBase
         {
             Nome = requisicao.Nome,
             Descricao = requisicao.Descricao,
-            AreaId = requisicao.AreaId,
+            AreaIds = areaIds,
+            AreaIdLegado = requisicao.AreaId,
+            UsuarioIdsVinculados = usuarioIdsVinculados,
             GestorUsuarioId = requisicao.GestorUsuarioId
         };
 
@@ -185,7 +200,7 @@ public sealed class ControladorProjetos : ControllerBase
         }
 
         var projetoAtual = await consultaProjetosCasoDeUso.ObterPorIdAsync(id, cancellationToken);
-        if (!contextoUsuario.EhSuperAdmin && !contextoUsuario.AreaIds.Contains(projetoAtual.AreaId))
+        if (!UsuarioPodeAcessarProjeto(contextoUsuario, projetoAtual))
         {
             return Forbid();
         }
@@ -206,5 +221,47 @@ public sealed class ControladorProjetos : ControllerBase
     private void InvalidarCacheProjetos()
     {
         servicoCacheConsulta.RemoverPorPrefixo(ChavesCacheConsulta.PrefixoProjetos);
+    }
+
+    private static List<Guid> NormalizarAreaIds(IReadOnlyCollection<Guid>? areaIds, Guid areaIdLegado)
+    {
+        var resultado = areaIds?
+            .Where(areaId => areaId != Guid.Empty)
+            .Distinct()
+            .ToList()
+            ?? [];
+
+        if (areaIdLegado != Guid.Empty && !resultado.Contains(areaIdLegado))
+        {
+            resultado.Insert(0, areaIdLegado);
+        }
+
+        return resultado;
+    }
+
+    private static List<Guid> NormalizarIds(IReadOnlyCollection<Guid>? ids)
+    {
+        return ids?
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList()
+            ?? [];
+    }
+
+    private static bool UsuarioPodeAcessarProjeto(
+        ContextoUsuarioAutenticado contextoUsuario,
+        ProjetoResposta projeto)
+    {
+        if (contextoUsuario.EhSuperAdmin)
+        {
+            return true;
+        }
+
+        if (contextoUsuario.AreaIds.Contains(projeto.AreaId))
+        {
+            return true;
+        }
+
+        return projeto.AreaIds.Any(areaId => contextoUsuario.AreaIds.Contains(areaId));
     }
 }

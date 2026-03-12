@@ -42,7 +42,7 @@ public sealed class ControladorAreas : ControllerBase
         });
     }
 
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}", Name = "obter_area_por_id")]
     [ProducesResponseType(typeof(RespostaSucessoApi<AreaResposta>), StatusCodes.Status200OK)]
     public async Task<ActionResult<RespostaSucessoApi<AreaResposta>>> ObterPorIdAsync(
         Guid id,
@@ -71,7 +71,7 @@ public sealed class ControladorAreas : ControllerBase
             Ativa = requisicao.Ativa
         }, cancellationToken);
 
-        return CreatedAtAction(nameof(ObterPorIdAsync), new { id = areaCriada.Id }, new RespostaSucessoApi<AreaResposta>
+        return CreatedAtRoute("obter_area_por_id", new { id = areaCriada.Id }, new RespostaSucessoApi<AreaResposta>
         {
             Mensagem = "Area criada com sucesso.",
             Dados = areaCriada,

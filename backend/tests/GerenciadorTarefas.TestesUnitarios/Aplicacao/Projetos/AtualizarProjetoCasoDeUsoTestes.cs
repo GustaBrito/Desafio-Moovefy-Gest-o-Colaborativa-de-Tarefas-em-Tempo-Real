@@ -30,7 +30,7 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
         var acao = async () => await casoDeUso.ExecutarAsync(Guid.Empty, new AtualizarProjetoEntrada
         {
             Nome = "Projeto",
-            AreaId = areaPadrao.Id
+            AreaIds = [areaPadrao.Id]
         });
 
         await acao.Should().ThrowAsync<ArgumentException>();
@@ -50,7 +50,7 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
         var acao = async () => await casoDeUso.ExecutarAsync(Guid.NewGuid(), new AtualizarProjetoEntrada
         {
             Nome = "Projeto",
-            AreaId = areaPadrao.Id
+            AreaIds = [areaPadrao.Id]
         });
 
         await acao.Should().ThrowAsync<KeyNotFoundException>();
@@ -109,7 +109,7 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
         {
             Nome = "Projeto valido",
             Descricao = new string('x', 1001),
-            AreaId = areaPadrao.Id
+            AreaIds = [areaPadrao.Id]
         });
 
         await acao.Should().ThrowAsync<ArgumentException>();
@@ -132,7 +132,7 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
         {
             Nome = "  Projeto novo  ",
             Descricao = "  Nova descricao  ",
-            AreaId = areaPadrao.Id
+            AreaIds = [areaPadrao.Id]
         });
 
         resposta.Id.Should().Be(projeto.Id);
@@ -159,7 +159,7 @@ public sealed class AtualizarProjetoCasoDeUsoTestes
         {
             Nome = "Projeto A Atualizado",
             Descricao = "   ",
-            AreaId = areaPadrao.Id
+            AreaIds = [areaPadrao.Id]
         });
 
         resposta.Descricao.Should().BeNull();

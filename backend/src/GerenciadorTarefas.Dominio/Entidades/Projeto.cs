@@ -13,4 +13,6 @@ public class Projeto
     public Area? Area { get; set; }
     public Usuario? CriadoPorUsuario { get; set; }
     public Usuario? GestorUsuario { get; set; }
+    public ICollection<ProjetoArea> AreasVinculadas { get; set; } = new List<ProjetoArea>();
+    public ICollection<ProjetoUsuarioVinculado> UsuariosVinculados { get; set; } = new List<ProjetoUsuarioVinculado>();
 }

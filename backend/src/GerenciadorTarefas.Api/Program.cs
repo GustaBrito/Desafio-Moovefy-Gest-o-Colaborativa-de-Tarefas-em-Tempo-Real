@@ -31,22 +31,39 @@ if (aplicarMigracoesAutomaticamente || aplicarSeedDadosDemonstracao)
 {
     using var escopo = aplicacao.Services.CreateScope();
     var contextoBancoDados = escopo.ServiceProvider.GetRequiredService<ContextoBancoDados>();
+    var loggerInicializacao = escopo.ServiceProvider
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("InicializacaoBancoDados");
 
-    if (aplicarMigracoesAutomaticamente)
+    try
     {
-        contextoBancoDados.Database.Migrate();
+        if (aplicarMigracoesAutomaticamente)
+        {
+            contextoBancoDados.Database.Migrate();
+        }
+
+        if (aplicarSeedDadosDemonstracao)
+        {
+            await SemeadorDadosDemonstracao.AplicarAsync(contextoBancoDados);
+        }
     }
-
-    if (aplicarSeedDadosDemonstracao)
+    catch (Exception ex) when (aplicacao.Environment.IsDevelopment())
     {
-        await SemeadorDadosDemonstracao.AplicarAsync(contextoBancoDados);
+        loggerInicializacao.LogWarning(
+            ex,
+            "Falha ao aplicar migracoes/seed no bootstrap. API iniciada em modo Development sem concluir inicializacao do banco.");
     }
 }
 
 aplicacao.UseSerilogRequestLogging();
 aplicacao.UsarTratamentoExcecaoGlobal();
 aplicacao.UsarDocumentacaoApi();
-aplicacao.UseHttpsRedirection();
+
+if (!aplicacao.Environment.IsDevelopment())
+{
+    aplicacao.UseHttpsRedirection();
+}
+
 aplicacao.UseCors(ConfiguracaoCors.NomePoliticaCorsPadrao);
 aplicacao.UseRateLimiter();
 aplicacao.UseAuthentication();

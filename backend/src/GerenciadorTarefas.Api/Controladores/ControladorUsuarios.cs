@@ -51,7 +51,7 @@ public sealed class ControladorUsuarios : ControllerBase
         });
     }
 
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}", Name = "obter_usuario_por_id")]
     [ProducesResponseType(typeof(RespostaSucessoApi<UsuarioResposta>), StatusCodes.Status200OK)]
     public async Task<ActionResult<RespostaSucessoApi<UsuarioResposta>>> ObterPorIdAsync(
         Guid id,
@@ -104,7 +104,7 @@ public sealed class ControladorUsuarios : ControllerBase
             AreaIds = requisicao.AreaIds
         }, cancellationToken);
 
-        return CreatedAtAction(nameof(ObterPorIdAsync), new { id = usuarioCriado.Id }, new RespostaSucessoApi<UsuarioResposta>
+        return CreatedAtRoute("obter_usuario_por_id", new { id = usuarioCriado.Id }, new RespostaSucessoApi<UsuarioResposta>
         {
             Mensagem = "Usuario criado com sucesso.",
             Dados = usuarioCriado,

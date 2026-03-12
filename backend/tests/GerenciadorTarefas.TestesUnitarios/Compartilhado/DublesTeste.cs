@@ -45,6 +45,54 @@ internal sealed class RepositorioProjetoFalso : IRepositorioProjeto
         return Task.FromResult((IReadOnlyCollection<Projeto>)projetos);
     }
 
+    public Task SincronizarAreasVinculadasAsync(
+        Guid projetoId,
+        IReadOnlyCollection<Guid> areaIds,
+        CancellationToken cancellationToken = default)
+    {
+        var projeto = Projetos.FirstOrDefault(item => item.Id == projetoId);
+        if (projeto is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        projeto.AreasVinculadas = areaIds
+            .Where(areaId => areaId != Guid.Empty)
+            .Distinct()
+            .Select(areaId => new ProjetoArea
+            {
+                ProjetoId = projetoId,
+                AreaId = areaId
+            })
+            .ToList();
+
+        return Task.CompletedTask;
+    }
+
+    public Task SincronizarUsuariosVinculadosAsync(
+        Guid projetoId,
+        IReadOnlyCollection<Guid> usuarioIds,
+        CancellationToken cancellationToken = default)
+    {
+        var projeto = Projetos.FirstOrDefault(item => item.Id == projetoId);
+        if (projeto is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        projeto.UsuariosVinculados = usuarioIds
+            .Where(usuarioId => usuarioId != Guid.Empty)
+            .Distinct()
+            .Select(usuarioId => new ProjetoUsuarioVinculado
+            {
+                ProjetoId = projetoId,
+                UsuarioId = usuarioId
+            })
+            .ToList();
+
+        return Task.CompletedTask;
+    }
+
     public Task AdicionarAsync(Projeto projeto, CancellationToken cancellationToken = default)
     {
         ProjetoAdicionado = projeto;

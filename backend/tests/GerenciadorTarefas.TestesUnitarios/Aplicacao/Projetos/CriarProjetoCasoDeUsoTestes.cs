@@ -82,7 +82,7 @@ public sealed class CriarProjetoCasoDeUsoTestes
         {
             Nome = "  Projeto Estrategico  ",
             Descricao = "  Descricao valida  ",
-            AreaId = areaPadrao.Id
+            AreaIds = [areaPadrao.Id]
         };
 
         var resposta = await casoDeUso.ExecutarAsync(entrada);
@@ -101,7 +101,7 @@ public sealed class CriarProjetoCasoDeUsoTestes
         {
             Nome = "Projeto sem descricao",
             Descricao = "   ",
-            AreaId = areaPadrao.Id
+            AreaIds = [areaPadrao.Id]
         };
 
         var resposta = await casoDeUso.ExecutarAsync(entrada);

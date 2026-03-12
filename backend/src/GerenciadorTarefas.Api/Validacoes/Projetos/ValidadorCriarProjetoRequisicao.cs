@@ -18,7 +18,16 @@ public sealed class ValidadorCriarProjetoRequisicao : AbstractValidator<CriarPro
             .WithMessage("A descricao do projeto deve ter no maximo 1000 caracteres.");
 
         RuleFor(requisicao => requisicao.AreaId)
-            .NotEmpty()
-            .WithMessage("A area do projeto deve ser informada.");
+            .Must((requisicao, areaId) =>
+                areaId != Guid.Empty || (requisicao.AreaIds is not null && requisicao.AreaIds.Any()))
+            .WithMessage("Informe ao menos uma area para o projeto.");
+
+        RuleFor(requisicao => requisicao.AreaIds)
+            .Must(areaIds => areaIds is null || areaIds.All(areaId => areaId != Guid.Empty))
+            .WithMessage("Todas as areas vinculadas devem ser validas.");
+
+        RuleFor(requisicao => requisicao.UsuarioIdsVinculados)
+            .Must(usuarioIds => usuarioIds is null || usuarioIds.All(usuarioId => usuarioId != Guid.Empty))
+            .WithMessage("Todos os usuarios vinculados devem ser validos.");
     }
 }

@@ -11,6 +11,14 @@ public interface IRepositorioProjeto
     Task<IReadOnlyCollection<Projeto>> ObterPorIdsAsync(
         IReadOnlyCollection<Guid> ids,
         CancellationToken cancellationToken = default);
+    Task SincronizarAreasVinculadasAsync(
+        Guid projetoId,
+        IReadOnlyCollection<Guid> areaIds,
+        CancellationToken cancellationToken = default);
+    Task SincronizarUsuariosVinculadosAsync(
+        Guid projetoId,
+        IReadOnlyCollection<Guid> usuarioIds,
+        CancellationToken cancellationToken = default);
     Task AdicionarAsync(Projeto projeto, CancellationToken cancellationToken = default);
     Task SalvarAlteracoesAsync(CancellationToken cancellationToken = default);
     void Atualizar(Projeto projeto);

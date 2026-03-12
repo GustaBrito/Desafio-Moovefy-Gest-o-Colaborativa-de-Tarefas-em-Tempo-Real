@@ -50,24 +50,60 @@ public sealed class ConsultaProjetosCasoDeUso : IConsultaProjetosCasoDeUso
         IReadOnlyCollection<Projeto> projetos,
         CancellationToken cancellationToken)
     {
-        var areaIds = projetos.Select(projeto => projeto.AreaId).Distinct().ToArray();
-        var gestorIds = projetos
-            .Where(projeto => projeto.GestorUsuarioId.HasValue)
-            .Select(projeto => projeto.GestorUsuarioId!.Value)
+        var areaIds = projetos
+            .SelectMany(projeto =>
+                projeto.AreasVinculadas.Count > 0
+                    ? projeto.AreasVinculadas.Select(vinculo => vinculo.AreaId)
+                    : [projeto.AreaId])
+            .Distinct()
+            .ToArray();
+        var usuarioIds = projetos
+            .SelectMany(projeto =>
+            {
+                var ids = projeto.UsuariosVinculados.Select(vinculo => vinculo.UsuarioId).ToList();
+                if (projeto.GestorUsuarioId.HasValue && !ids.Contains(projeto.GestorUsuarioId.Value))
+                {
+                    ids.Add(projeto.GestorUsuarioId.Value);
+                }
+
+                return ids;
+            })
             .Distinct()
             .ToArray();
 
         var areas = await repositorioArea.ListarPorIdsAsync(areaIds, cancellationToken);
-        var gestores = await repositorioUsuario.ObterPorIdsAsync(gestorIds, cancellationToken);
+        var usuarios = await repositorioUsuario.ObterPorIdsAsync(usuarioIds, cancellationToken);
 
         var areasPorId = areas.ToDictionary(area => area.Id);
-        var gestoresPorId = gestores.ToDictionary(gestor => gestor.Id);
+        var usuariosPorId = usuarios.ToDictionary(usuario => usuario.Id);
 
         return projetos.Select(projeto =>
         {
-            areasPorId.TryGetValue(projeto.AreaId, out var area);
+            var areaIdsProjeto = projeto.AreasVinculadas
+                .Select(vinculo => vinculo.AreaId)
+                .Distinct()
+                .ToList();
+            if (areaIdsProjeto.Count == 0)
+            {
+                areaIdsProjeto.Add(projeto.AreaId);
+            }
+
+            var areaPrincipalId = areaIdsProjeto.Contains(projeto.AreaId)
+                ? projeto.AreaId
+                : areaIdsProjeto[0];
+            areasPorId.TryGetValue(areaPrincipalId, out var areaPrincipal);
+
+            var usuarioIdsProjeto = projeto.UsuariosVinculados
+                .Select(vinculo => vinculo.UsuarioId)
+                .Distinct()
+                .ToList();
+            if (projeto.GestorUsuarioId.HasValue && !usuarioIdsProjeto.Contains(projeto.GestorUsuarioId.Value))
+            {
+                usuarioIdsProjeto.Add(projeto.GestorUsuarioId.Value);
+            }
+
             var gestorNome = projeto.GestorUsuarioId.HasValue
-                && gestoresPorId.TryGetValue(projeto.GestorUsuarioId.Value, out var gestor)
+                && usuariosPorId.TryGetValue(projeto.GestorUsuarioId.Value, out var gestor)
                     ? gestor.Nome
                     : null;
 
@@ -76,10 +112,20 @@ public sealed class ConsultaProjetosCasoDeUso : IConsultaProjetosCasoDeUso
                 Id = projeto.Id,
                 Nome = projeto.Nome,
                 Descricao = projeto.Descricao,
-                AreaId = projeto.AreaId,
-                AreaNome = area?.Nome ?? "Area nao encontrada",
+                AreaId = areaPrincipalId,
+                AreaNome = areaPrincipal?.Nome ?? "Area nao encontrada",
+                AreaIds = areaIdsProjeto,
+                AreasNomes = areaIdsProjeto
+                    .Where(areaId => areasPorId.ContainsKey(areaId))
+                    .Select(areaId => areasPorId[areaId].Nome)
+                    .ToList(),
                 GestorUsuarioId = projeto.GestorUsuarioId,
                 GestorNome = gestorNome,
+                UsuarioIdsVinculados = usuarioIdsProjeto,
+                UsuariosNomesVinculados = usuarioIdsProjeto
+                    .Where(usuarioId => usuariosPorId.ContainsKey(usuarioId))
+                    .Select(usuarioId => usuariosPorId[usuarioId].Nome)
+                    .ToList(),
                 DataCriacao = projeto.DataCriacao
             };
         }).ToList();
