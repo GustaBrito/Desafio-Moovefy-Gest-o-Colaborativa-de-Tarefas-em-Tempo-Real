@@ -1,12 +1,9 @@
 import { useEffect } from "react";
-import { HubConnectionState } from "@microsoft/signalr";
 import { usarAutenticacao } from "../../ganchos/usarAutenticacao";
 import { usarNotificacao } from "../../ganchos/usarNotificacao";
 import { listarHistoricoNotificacoes } from "../../servicos/servicoNotificacoes";
 import {
   EVENTO_TAREFA_ATRIBUIDA,
-  METODO_ENTRAR_CANAL_RESPONSAVEL,
-  METODO_SAIR_CANAL_RESPONSAVEL,
   criarConexaoNotificacoesTempoReal,
 } from "../../servicos/servicoNotificacoesTempoReal";
 import type {
@@ -73,7 +70,6 @@ export function InicializadorNotificacoesTempoReal(): null {
 
       try {
         await conexaoNotificacoes.start();
-        await conexaoNotificacoes.invoke(METODO_ENTRAR_CANAL_RESPONSAVEL);
       } catch {
         if (ativo) {
           mostrarErro("Nao foi possivel conectar no canal de notificacoes em tempo real.");
@@ -86,12 +82,6 @@ export function InicializadorNotificacoesTempoReal(): null {
     return () => {
       ativo = false;
       conexaoNotificacoes.off(EVENTO_TAREFA_ATRIBUIDA, tratarEventoTarefaAtribuida);
-
-      if (conexaoNotificacoes.state === HubConnectionState.Connected) {
-        void conexaoNotificacoes
-          .invoke(METODO_SAIR_CANAL_RESPONSAVEL)
-          .catch(() => undefined);
-      }
 
       void conexaoNotificacoes.stop();
     };
