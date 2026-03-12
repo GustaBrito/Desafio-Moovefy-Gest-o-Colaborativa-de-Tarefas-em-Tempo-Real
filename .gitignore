@@ -32,3 +32,8 @@ TestResults/
 # Ferramentas locais
 .dotnet/
 .nuget/
+
+# Variaveis de ambiente locais
+.env
+frontend/.env
+backend/.env
