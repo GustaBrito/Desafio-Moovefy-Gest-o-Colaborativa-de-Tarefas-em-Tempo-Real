@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   PainelMetricasDashboard,
   type CartaoIndicadorDashboard,
-  type PontoEvolucaoDashboard,
   type TarefaResumoDashboard,
   type TotalPrioridadeDashboard,
   type TotalStatusDashboard,
@@ -15,8 +14,6 @@ import { listarProjetos } from "../servicos/servicoProjetos";
 import { listarTodasTarefas } from "../servicos/servicoTarefas";
 import type { ProjetoResposta } from "../tipos/projetos";
 import { PrioridadeTarefa, StatusTarefa, type TarefaResposta } from "../tipos/tarefas";
-
-type PeriodoDashboard = 7 | 15 | 30;
 
 interface ResumoSnapshotDashboard {
   totalTarefas: number;
@@ -58,9 +55,8 @@ const coresPrioridade: Record<PrioridadeTarefa, string> = {
 export function PaginaDashboard(): JSX.Element {
   const navegar = useNavigate();
   const { mostrarErro, mostrarInformacao, mostrarSucesso } = usarNotificacao();
-  const [periodoSelecionado, setPeriodoSelecionado] =
-    useState<PeriodoDashboard>(15);
   const [projetoSelecionado, setProjetoSelecionado] = useState("");
+  const [buscaProjeto, setBuscaProjeto] = useState("");
   const [atualizacaoAutomatica, setAtualizacaoAutomatica] = useState(true);
   const [snapshotInicial] = useState<ResumoSnapshotDashboard | null>(
     () => lerSnapshotDashboard()
@@ -88,8 +84,53 @@ export function PaginaDashboard(): JSX.Element {
     refetchInterval: atualizacaoAutomatica ? 30000 : false,
   });
 
+  const projetosDisponiveis = useMemo(
+    () =>
+      [...(consultaProjetos.data ?? [])].sort((projetoAtual, proximoProjeto) =>
+        projetoAtual.nome.localeCompare(proximoProjeto.nome, "pt-BR")
+      ),
+    [consultaProjetos.data]
+  );
+
+  const projetosFiltradosBusca = useMemo(() => {
+    const termoBusca = normalizarTexto(buscaProjeto);
+
+    if (!termoBusca) {
+      return projetosDisponiveis;
+    }
+
+    return projetosDisponiveis.filter((projeto) => {
+      const nomeNormalizado = normalizarTexto(projeto.nome);
+      const areaNormalizada = normalizarTexto(projeto.areaNome ?? "");
+      return (
+        nomeNormalizado.includes(termoBusca) ||
+        areaNormalizada.includes(termoBusca)
+      );
+    });
+  }, [buscaProjeto, projetosDisponiveis]);
+
+  const projetosParaSelecao = useMemo(() => {
+    const limiteExibicao = 60;
+    const projetoSelecionadoAtual = projetoSelecionado
+      ? projetosDisponiveis.find((projeto) => projeto.id === projetoSelecionado)
+      : undefined;
+
+    const primeirosItens = projetosFiltradosBusca.slice(0, limiteExibicao);
+    const existeSelecionadoNaLista = projetoSelecionadoAtual
+      ? primeirosItens.some((projeto) => projeto.id === projetoSelecionadoAtual.id)
+      : true;
+
+    if (!projetoSelecionadoAtual || existeSelecionadoNaLista) {
+      return primeirosItens;
+    }
+
+    return [projetoSelecionadoAtual, ...primeirosItens];
+  }, [projetoSelecionado, projetosDisponiveis, projetosFiltradosBusca]);
+
+  const existeRecorteProjetos = projetosFiltradosBusca.length > 60;
+
   const tarefasBase = consultaTarefas.data ?? [];
-  const tarefasPeriodo = filtrarPorPeriodo(tarefasBase, periodoSelecionado);
+  const tarefasPeriodo = tarefasBase;
 
   const metricasPeriodo = useMemo(
     () => calcularMetricasPorPeriodo(tarefasPeriodo),
@@ -144,11 +185,6 @@ export function PaginaDashboard(): JSX.Element {
           cor: coresPrioridade[prioridade],
         })),
     [metricasPeriodo.totalPorPrioridade]
-  );
-
-  const serieEvolucao = useMemo<PontoEvolucaoDashboard[]>(
-    () => gerarSerieEvolucaoDiaria(tarefasPeriodo, periodoSelecionado),
-    [tarefasPeriodo, periodoSelecionado]
   );
 
   const mapaProjetos = useMemo(
@@ -207,9 +243,9 @@ export function PaginaDashboard(): JSX.Element {
     () => [
       {
         id: "total_tarefas",
-        titulo: "Total no periodo",
+        titulo: "Total atual",
         valor: `${metricasPeriodo.totalTarefas}`,
-        subtitulo: `${periodoSelecionado} dias`,
+        subtitulo: projetoSelecionado ? "Projeto filtrado" : "Todos os projetos",
         variacao: calcularVariacao(
           snapshotInicial?.totalTarefas,
           metricasPeriodo.totalTarefas
@@ -219,7 +255,7 @@ export function PaginaDashboard(): JSX.Element {
         id: "taxa_conclusao",
         titulo: "Taxa de conclusao",
         valor: `${metricasPeriodo.taxaConclusao.toFixed(2)}%`,
-        subtitulo: "Entrega no periodo",
+        subtitulo: "Entrega acumulada",
         variacao: calcularVariacao(
           snapshotInicial?.taxaConclusao,
           metricasPeriodo.taxaConclusao
@@ -249,7 +285,7 @@ export function PaginaDashboard(): JSX.Element {
         tipoDestaque: "sucesso",
       },
     ],
-    [metricasPeriodo, periodoSelecionado, snapshotInicial]
+    [metricasPeriodo, projetoSelecionado, snapshotInicial]
   );
 
   const dataUltimaAtualizacao = useMemo(() => {
@@ -307,7 +343,7 @@ export function PaginaDashboard(): JSX.Element {
   }
 
   async function copiarResumo(): Promise<void> {
-    const resumo = gerarResumoTexto(metricasPeriodo, periodoSelecionado);
+    const resumo = gerarResumoTexto(metricasPeriodo);
 
     try {
       await navigator.clipboard.writeText(resumo);
@@ -322,7 +358,7 @@ export function PaginaDashboard(): JSX.Element {
   }
 
   return (
-    <section className="pagina-conteudo">
+    <section className="pagina-conteudo pagina-dashboard-modernizada">
       <header className="cabecalho-pagina cabecalho-dashboard">
         <div>
           <h1>Dashboard</h1>
@@ -348,23 +384,25 @@ export function PaginaDashboard(): JSX.Element {
       <article className="cartao-filtros painel-filtros-dashboard">
         <h3>Filtros do painel</h3>
 
-        <div className="grade-filtros">
-          <label htmlFor="filtroPeriodoDashboard">
-            Periodo
-            <select
-              id="filtroPeriodoDashboard"
-              value={periodoSelecionado}
+        <div className="grade-filtros grade-filtros-dashboard">
+          <label htmlFor="buscaProjetoDashboard" className="campo-busca-projeto-dashboard">
+            Buscar projeto
+            <input
+              id="buscaProjetoDashboard"
+              type="search"
+              value={buscaProjeto}
               onChange={(evento) => {
-                setPeriodoSelecionado(Number(evento.target.value) as PeriodoDashboard);
+                setBuscaProjeto(evento.target.value);
               }}
-            >
-              <option value={7}>Ultimos 7 dias</option>
-              <option value={15}>Ultimos 15 dias</option>
-              <option value={30}>Ultimos 30 dias</option>
-            </select>
+              placeholder="Digite nome ou area para filtrar opcoes"
+            />
+            <small>
+              {projetosFiltradosBusca.length} projeto(s) encontrado(s)
+              {existeRecorteProjetos ? " (mostrando os 60 primeiros)" : ""}
+            </small>
           </label>
 
-          <label htmlFor="filtroProjetoDashboard">
+          <label htmlFor="filtroProjetoDashboard" className="campo-selecao-projeto-dashboard">
             Projeto
             <select
               id="filtroProjetoDashboard"
@@ -374,17 +412,20 @@ export function PaginaDashboard(): JSX.Element {
               }}
             >
               <option value="">Todos os projetos</option>
-              {(consultaProjetos.data ?? []).map((projeto) => (
+              {projetosParaSelecao.map((projeto) => (
                 <option key={projeto.id} value={projeto.id}>
-                  {projeto.nome}
+                  {projeto.nome} ({projeto.areaNome})
                 </option>
               ))}
             </select>
+            {projetosFiltradosBusca.length === 0 && (
+              <small>Sem projetos para o termo informado. Ajuste a busca.</small>
+            )}
           </label>
 
           <label className="opcao-atualizacao-dashboard">
-            Atualizacao automatica
-            <div>
+            Recarregamento automatico
+            <div className="linha-opcao-atualizacao-dashboard">
               <input
                 type="checkbox"
                 checked={atualizacaoAutomatica}
@@ -415,7 +456,7 @@ export function PaginaDashboard(): JSX.Element {
         <article className="cartao-listagem estado-vazio-dashboard">
           <h3>Sem dados para o filtro atual</h3>
           <p>
-            Ajuste o periodo ou remova o filtro de projeto para visualizar metricas.
+            Ajuste a busca de projeto ou remova o filtro para visualizar metricas.
           </p>
         </article>
       )}
@@ -425,10 +466,8 @@ export function PaginaDashboard(): JSX.Element {
           cartoes={cartoes}
           totaisStatus={totaisStatus}
           totaisPrioridade={totaisPrioridade}
-          serieEvolucao={serieEvolucao}
           tarefasAtencao={tarefasAtencao}
           tarefasConcluidasRecentes={tarefasConcluidasRecentes}
-          periodoDias={periodoSelecionado}
           aoExportarCsv={exportarCsv}
           aoCopiarResumo={() => {
             void copiarResumo();
@@ -440,15 +479,12 @@ export function PaginaDashboard(): JSX.Element {
   );
 }
 
-function filtrarPorPeriodo(
-  tarefas: TarefaResposta[],
-  periodoDias: PeriodoDashboard
-): TarefaResposta[] {
-  const agora = new Date();
-  const limite = new Date(agora);
-  limite.setDate(limite.getDate() - periodoDias);
-
-  return tarefas.filter((tarefa) => new Date(tarefa.dataCriacao) >= limite);
+function normalizarTexto(valor: string): string {
+  return valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function calcularMetricasPorPeriodo(tarefas: TarefaResposta[]) {
@@ -504,48 +540,6 @@ function calcularMetricasPorPeriodo(tarefas: TarefaResposta[]) {
     totalPorStatus,
     totalPorPrioridade,
   };
-}
-
-function gerarSerieEvolucaoDiaria(
-  tarefas: TarefaResposta[],
-  periodoDias: PeriodoDashboard
-): PontoEvolucaoDashboard[] {
-  const hoje = new Date();
-  const serie: PontoEvolucaoDashboard[] = [];
-
-  for (let indice = periodoDias - 1; indice >= 0; indice -= 1) {
-    const dataPonto = new Date(hoje);
-    dataPonto.setHours(0, 0, 0, 0);
-    dataPonto.setDate(dataPonto.getDate() - indice);
-
-    const diaSeguinte = new Date(dataPonto);
-    diaSeguinte.setDate(diaSeguinte.getDate() + 1);
-
-    const criadas = tarefas.filter((tarefa) => {
-      const dataCriacao = new Date(tarefa.dataCriacao);
-      return dataCriacao >= dataPonto && dataCriacao < diaSeguinte;
-    }).length;
-
-    const concluidas = tarefas.filter((tarefa) => {
-      if (!tarefa.dataConclusao) {
-        return false;
-      }
-
-      const dataConclusao = new Date(tarefa.dataConclusao);
-      return dataConclusao >= dataPonto && dataConclusao < diaSeguinte;
-    }).length;
-
-    serie.push({
-      periodo: dataPonto.toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-      }),
-      criadas,
-      concluidas,
-    });
-  }
-
-  return serie;
 }
 
 function criarMapaProjetos(projetos: ProjetoResposta[]): Map<string, ProjetoResposta> {
@@ -641,11 +635,10 @@ function gerarResumoTexto(
     taxaConclusao: number;
     tarefasAtrasadas: number;
     tarefasConcluidasNoPrazo: number;
-  },
-  periodoDias: number
+  }
 ): string {
   return [
-    `Resumo do dashboard (${periodoDias} dias):`,
+    "Resumo do dashboard:",
     `- Total de tarefas: ${metricas.totalTarefas}`,
     `- Taxa de conclusao: ${metricas.taxaConclusao.toFixed(2)}%`,
     `- Tarefas atrasadas: ${metricas.tarefasAtrasadas}`,
@@ -664,7 +657,6 @@ function EsqueletoDashboard(): JSX.Element {
       </div>
 
       <div className="grade-graficos-dashboard">
-        <div className="bloco-esqueleto bloco-esqueleto-grafico" />
         <div className="bloco-esqueleto bloco-esqueleto-grafico" />
         <div className="bloco-esqueleto bloco-esqueleto-grafico" />
       </div>

@@ -99,13 +99,7 @@ export function TabelaTarefasOperacional({
               </button>
             </th>
             <th>
-              <button
-                type="button"
-                className="botao-ordenacao-coluna"
-                onClick={() => aoOrdenar(CampoOrdenacaoTarefa.DataPrazo)}
-              >
-                Prazo {indicadorOrdenacao(campoOrdenacao, direcaoOrdenacao, CampoOrdenacaoTarefa.DataPrazo)}
-              </button>
+              Prazo
             </th>
             <th>
               <button

@@ -5,8 +5,6 @@ import {
   CartesianGrid,
   Cell,
   Legend,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -39,12 +37,6 @@ export interface TotalPrioridadeDashboard {
   cor: string;
 }
 
-export interface PontoEvolucaoDashboard {
-  periodo: string;
-  criadas: number;
-  concluidas: number;
-}
-
 export interface TarefaResumoDashboard {
   id: string;
   titulo: string;
@@ -60,10 +52,8 @@ interface PropriedadesPainelMetricasDashboard {
   cartoes: CartaoIndicadorDashboard[];
   totaisStatus: TotalStatusDashboard[];
   totaisPrioridade: TotalPrioridadeDashboard[];
-  serieEvolucao: PontoEvolucaoDashboard[];
   tarefasAtencao: TarefaResumoDashboard[];
   tarefasConcluidasRecentes: TarefaResumoDashboard[];
-  periodoDias: number;
   aoExportarCsv: () => void;
   aoCopiarResumo: () => void;
   aoIrParaTarefas: () => void;
@@ -73,10 +63,8 @@ export function PainelMetricasDashboard({
   cartoes,
   totaisStatus,
   totaisPrioridade,
-  serieEvolucao,
   tarefasAtencao,
   tarefasConcluidasRecentes,
-  periodoDias,
   aoExportarCsv,
   aoCopiarResumo,
   aoIrParaTarefas,
@@ -122,40 +110,6 @@ export function PainelMetricasDashboard({
                 <Tooltip formatter={(valor) => [`${valor ?? 0}`, "Total"]} />
                 <Legend />
               </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-
-        <article className="cartao-dashboard-grafico">
-          <header className="cabecalho-cartao-dashboard">
-            <h3>Evolucao diaria</h3>
-            <span>Periodo de {periodoDias} dias</span>
-          </header>
-          <div className="container-grafico-dashboard">
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={serieEvolucao}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="periodo" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="criadas"
-                  stroke="#2563eb"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Criadas"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="concluidas"
-                  stroke="#0f766e"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Concluidas"
-                />
-              </LineChart>
             </ResponsiveContainer>
           </div>
         </article>

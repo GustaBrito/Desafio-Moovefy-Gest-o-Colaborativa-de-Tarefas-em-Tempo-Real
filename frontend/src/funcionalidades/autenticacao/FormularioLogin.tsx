@@ -35,7 +35,6 @@ export function FormularioLogin({
   const {
     register,
     handleSubmit,
-    setValue,
     watch,
     formState: { errors, isValid },
   } = useForm<DadosFormularioLogin>({
@@ -58,17 +57,6 @@ export function FormularioLogin({
     [emEnvio, isValid]
   );
 
-  function preencherAcessoRapido(tipoAcesso: "administrador" | "colaborador"): void {
-    if (tipoAcesso === "administrador") {
-      setValue("email", "superadmin@gerenciadortarefas.local", { shouldValidate: true });
-      setValue("senha", "SuperAdmin@123", { shouldValidate: true });
-      return;
-    }
-
-    setValue("email", "colaborador.dev@gerenciadortarefas.local", { shouldValidate: true });
-    setValue("senha", "ColaboradorDev@123", { shouldValidate: true });
-  }
-
   function atualizarIndicadorCapsLock(evento: KeyboardEvent<HTMLInputElement>): void {
     setCapsLockAtivo(evento.getModifierState("CapsLock"));
   }
@@ -90,26 +78,6 @@ export function FormularioLogin({
           aria-hidden="true"
         />
         <span>{mensagemStatusApi}</span>
-      </div>
-
-      <div className="acesso-rapido-login">
-        <span>Acesso rapido</span>
-        <div className="botoes-acesso-rapido">
-          <button
-            type="button"
-            className="botao-secundario botao-acesso-rapido"
-            onClick={() => preencherAcessoRapido("administrador")}
-          >
-            Preencher Admin
-          </button>
-          <button
-            type="button"
-            className="botao-secundario botao-acesso-rapido"
-            onClick={() => preencherAcessoRapido("colaborador")}
-          >
-            Preencher Colaborador
-          </button>
-        </div>
       </div>
 
       <label htmlFor="email">Email</label>
@@ -138,11 +106,55 @@ export function FormularioLogin({
         />
         <button
           type="button"
-          className="botao-visualizar-senha"
+          className="botao-icone-senha"
           onClick={() => setSenhaVisivel((valorAtual) => !valorAtual)}
           aria-label={senhaVisivel ? "Ocultar senha" : "Mostrar senha"}
         >
-          {senhaVisivel ? "Ocultar" : "Mostrar"}
+          {senhaVisivel ? (
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                d="M3 4L20 21M10.58 10.59C10.21 10.95 10 11.45 10 12C10 13.1 10.9 14 12 14C12.55 14 13.05 13.79 13.41 13.42M9.88 5.09C10.56 4.94 11.27 4.86 12 4.86C16.78 4.86 20.87 8 22.5 12C21.87 13.53 20.88 14.88 19.64 15.94M6.7 6.71C4.93 8.02 3.57 9.85 2.5 12C4.13 16 8.22 19.14 13 19.14C14.52 19.14 15.96 18.82 17.25 18.25"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                d="M2.5 12C4.13 8 8.22 4.86 13 4.86C17.78 4.86 21.87 8 23.5 12C21.87 16 17.78 19.14 13 19.14C8.22 19.14 4.13 16 2.5 12Z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle
+                cx="13"
+                cy="12"
+                r="3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
         </button>
       </div>
       {errors.senha && <span className="mensagem-erro">{errors.senha.message}</span>}

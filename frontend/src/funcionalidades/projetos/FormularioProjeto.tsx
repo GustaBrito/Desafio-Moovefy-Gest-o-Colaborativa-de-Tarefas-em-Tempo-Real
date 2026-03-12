@@ -1,10 +1,10 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import type { AreaResposta } from "../../tipos/areas";
 
-interface GestorOpcao {
+interface PessoaOpcao {
   id: string;
   nome: string;
   email: string;
@@ -19,26 +19,26 @@ const esquemaFormularioProjeto = z.object({
     .string()
     .max(1000, "A descricao do projeto deve ter no maximo 1000 caracteres.")
     .optional(),
-  areaId: z.string().uuid("A area do projeto deve ser informada."),
-  gestorUsuarioId: z
-    .string()
-    .uuid("Quando informado, o gestor deve ser valido.")
-    .optional()
-    .or(z.literal("")),
+  areaIds: z
+    .array(z.string().uuid("As areas vinculadas devem ser validas."))
+    .min(1, "Selecione ao menos uma area."),
+  usuarioIdsVinculados: z.array(
+    z.string().uuid("Os usuarios vinculados devem ser validos.")
+  ),
 });
 
 type DadosFormularioProjeto = z.infer<typeof esquemaFormularioProjeto>;
 
 interface PropriedadesFormularioProjeto {
   areas: AreaResposta[];
-  gestores: GestorOpcao[];
+  pessoas: PessoaOpcao[];
   emEnvio: boolean;
   aoEnviar: (dados: DadosFormularioProjeto) => Promise<void>;
   valoresIniciais?: {
     nome: string;
     descricao?: string | null;
-    areaId: string;
-    gestorUsuarioId?: string | null;
+    areaIds: string[];
+    usuarioIdsVinculados: string[];
   };
   titulo?: string;
   rotuloBotao?: string;
@@ -48,7 +48,7 @@ interface PropriedadesFormularioProjeto {
 
 export function FormularioProjeto({
   areas,
-  gestores,
+  pessoas,
   emEnvio,
   aoEnviar,
   valoresIniciais,
@@ -57,18 +57,20 @@ export function FormularioProjeto({
   rotuloBotaoEmEnvio = "Salvando...",
   aoCancelarEdicao,
 }: PropriedadesFormularioProjeto): JSX.Element {
+  const [termoBuscaArea, setTermoBuscaArea] = useState("");
+  const [termoBuscaPessoa, setTermoBuscaPessoa] = useState("");
   const valoresPadraoFormulario = useMemo<DadosFormularioProjeto>(
     () => ({
       nome: valoresIniciais?.nome ?? "",
       descricao: valoresIniciais?.descricao ?? "",
-      areaId: valoresIniciais?.areaId ?? "",
-      gestorUsuarioId: valoresIniciais?.gestorUsuarioId ?? "",
+      areaIds: valoresIniciais?.areaIds ?? [],
+      usuarioIdsVinculados: valoresIniciais?.usuarioIdsVinculados ?? [],
     }),
     [
       valoresIniciais?.nome,
       valoresIniciais?.descricao,
-      valoresIniciais?.areaId,
-      valoresIniciais?.gestorUsuarioId,
+      valoresIniciais?.areaIds,
+      valoresIniciais?.usuarioIdsVinculados,
     ]
   );
 
@@ -76,6 +78,7 @@ export function FormularioProjeto({
     register,
     handleSubmit,
     reset,
+    setValue,
     watch,
     formState: { errors },
   } = useForm<DadosFormularioProjeto>({
@@ -84,11 +87,97 @@ export function FormularioProjeto({
   });
 
   const descricaoDigitada = watch("descricao");
+  const areaIdsSelecionadas = watch("areaIds");
+  const usuarioIdsSelecionados = watch("usuarioIdsVinculados");
   const quantidadeCaracteresDescricao = descricaoDigitada?.length ?? 0;
+
+  const areasFiltradas = useMemo(
+    () =>
+      areas
+        .filter((area) => !areaIdsSelecionadas.includes(area.id))
+        .filter((area) =>
+          normalizarTexto(area.nome).includes(normalizarTexto(termoBuscaArea))
+        )
+        .slice(0, 8),
+    [areas, areaIdsSelecionadas, termoBuscaArea]
+  );
+
+  const pessoasFiltradas = useMemo(
+    () =>
+      pessoas
+        .filter((pessoa) => !usuarioIdsSelecionados.includes(pessoa.id))
+        .filter((pessoa) => {
+          const termoNormalizado = normalizarTexto(termoBuscaPessoa);
+          return (
+            normalizarTexto(pessoa.nome).includes(termoNormalizado) ||
+            normalizarTexto(pessoa.email).includes(termoNormalizado)
+          );
+        })
+        .slice(0, 8),
+    [pessoas, termoBuscaPessoa, usuarioIdsSelecionados]
+  );
+
+  const areasSelecionadas = useMemo(
+    () => areas.filter((area) => areaIdsSelecionadas.includes(area.id)),
+    [areas, areaIdsSelecionadas]
+  );
+
+  const pessoasSelecionadas = useMemo(
+    () => pessoas.filter((pessoa) => usuarioIdsSelecionados.includes(pessoa.id)),
+    [pessoas, usuarioIdsSelecionados]
+  );
 
   useEffect(() => {
     reset(valoresPadraoFormulario);
+    setTermoBuscaArea("");
+    setTermoBuscaPessoa("");
   }, [reset, valoresPadraoFormulario]);
+
+  function adicionarArea(areaId: string): void {
+    if (areaIdsSelecionadas.includes(areaId)) {
+      return;
+    }
+
+    setValue("areaIds", [...areaIdsSelecionadas, areaId], {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setTermoBuscaArea("");
+  }
+
+  function removerArea(areaId: string): void {
+    setValue(
+      "areaIds",
+      areaIdsSelecionadas.filter((idAtual) => idAtual !== areaId),
+      {
+        shouldDirty: true,
+        shouldValidate: true,
+      }
+    );
+  }
+
+  function adicionarPessoa(usuarioId: string): void {
+    if (usuarioIdsSelecionados.includes(usuarioId)) {
+      return;
+    }
+
+    setValue("usuarioIdsVinculados", [...usuarioIdsSelecionados, usuarioId], {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setTermoBuscaPessoa("");
+  }
+
+  function removerPessoa(usuarioId: string): void {
+    setValue(
+      "usuarioIdsVinculados",
+      usuarioIdsSelecionados.filter((idAtual) => idAtual !== usuarioId),
+      {
+        shouldDirty: true,
+        shouldValidate: true,
+      }
+    );
+  }
 
   async function enviar(dados: DadosFormularioProjeto): Promise<void> {
     await aoEnviar(dados);
@@ -97,9 +186,11 @@ export function FormularioProjeto({
       reset({
         nome: "",
         descricao: "",
-        areaId: "",
-        gestorUsuarioId: "",
+        areaIds: [],
+        usuarioIdsVinculados: [],
       });
+      setTermoBuscaArea("");
+      setTermoBuscaPessoa("");
     }
   }
 
@@ -134,28 +225,85 @@ export function FormularioProjeto({
         <span className="mensagem-erro">{errors.descricao.message}</span>
       )}
 
-      <label htmlFor="areaProjeto">Area</label>
-      <select id="areaProjeto" {...register("areaId")}>
-        <option value="">Selecione</option>
-        {areas.map((area) => (
-          <option key={area.id} value={area.id}>
+      <label htmlFor="buscaAreaProjeto">Areas vinculadas</label>
+      <input
+        id="buscaAreaProjeto"
+        type="text"
+        placeholder="Digite para filtrar e clique para adicionar area"
+        value={termoBuscaArea}
+        onChange={(evento) => setTermoBuscaArea(evento.target.value)}
+      />
+      <div className="lista-opcoes-vinculo">
+        {areasFiltradas.map((area) => (
+          <button
+            key={area.id}
+            type="button"
+            className="opcao-vinculo"
+            onClick={() => adicionarArea(area.id)}
+          >
             {area.nome}
-          </option>
+          </button>
         ))}
-      </select>
-      {errors.areaId && <span className="mensagem-erro">{errors.areaId.message}</span>}
+        {areasFiltradas.length === 0 && (
+          <span className="mensagem-vazia-vinculo">Nenhuma area disponivel para o filtro.</span>
+        )}
+      </div>
+      <div className="lista-chips-vinculo">
+        {areasSelecionadas.map((area) => (
+          <button
+            key={area.id}
+            type="button"
+            className="chip-vinculo"
+            onClick={() => removerArea(area.id)}
+            title="Remover area"
+          >
+            {area.nome} <span aria-hidden="true">×</span>
+          </button>
+        ))}
+      </div>
+      {errors.areaIds && <span className="mensagem-erro">{errors.areaIds.message}</span>}
 
-      <label htmlFor="gestorProjeto">Gestor (opcional)</label>
-      <select id="gestorProjeto" {...register("gestorUsuarioId")}>
-        <option value="">Nao definido</option>
-        {gestores.map((gestor) => (
-          <option key={gestor.id} value={gestor.id}>
-            {gestor.nome} ({gestor.email})
-          </option>
+      <label htmlFor="buscaPessoaProjeto">Pessoas vinculadas (opcional)</label>
+      <input
+        id="buscaPessoaProjeto"
+        type="text"
+        placeholder="Digite nome ou email para filtrar e adicionar pessoa"
+        value={termoBuscaPessoa}
+        onChange={(evento) => setTermoBuscaPessoa(evento.target.value)}
+      />
+      <div className="lista-opcoes-vinculo">
+        {pessoasFiltradas.map((pessoa) => (
+          <button
+            key={pessoa.id}
+            type="button"
+            className="opcao-vinculo"
+            onClick={() => adicionarPessoa(pessoa.id)}
+          >
+            <span>{pessoa.nome}</span>
+            <small>{pessoa.email}</small>
+          </button>
         ))}
-      </select>
-      {errors.gestorUsuarioId && (
-        <span className="mensagem-erro">{errors.gestorUsuarioId.message}</span>
+        {pessoasFiltradas.length === 0 && (
+          <span className="mensagem-vazia-vinculo">
+            Nenhuma pessoa disponivel para o filtro.
+          </span>
+        )}
+      </div>
+      <div className="lista-chips-vinculo">
+        {pessoasSelecionadas.map((pessoa) => (
+          <button
+            key={pessoa.id}
+            type="button"
+            className="chip-vinculo"
+            onClick={() => removerPessoa(pessoa.id)}
+            title="Remover pessoa"
+          >
+            {pessoa.nome} <span aria-hidden="true">×</span>
+          </button>
+        ))}
+      </div>
+      {errors.usuarioIdsVinculados && (
+        <span className="mensagem-erro">{errors.usuarioIdsVinculados.message}</span>
       )}
 
       <div className="linha-botoes-formulario">
@@ -176,4 +324,12 @@ export function FormularioProjeto({
       </div>
     </form>
   );
+}
+
+function normalizarTexto(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
 }

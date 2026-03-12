@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormularioProjeto } from "../funcionalidades/projetos/FormularioProjeto";
 import { usarAutenticacao } from "../ganchos/usarAutenticacao";
@@ -11,7 +11,11 @@ import {
   listarProjetos,
 } from "../servicos/servicoProjetos";
 import { listarUsuarios } from "../servicos/servicoUsuarios";
-import type { AtualizarProjetoRequisicao, CriarProjetoRequisicao, ProjetoResposta } from "../tipos/projetos";
+import type {
+  AtualizarProjetoRequisicao,
+  CriarProjetoRequisicao,
+  ProjetoResposta,
+} from "../tipos/projetos";
 
 type CriterioOrdenacaoProjeto =
   | "nome_ascendente"
@@ -19,15 +23,47 @@ type CriterioOrdenacaoProjeto =
   | "data_mais_recente"
   | "data_mais_antiga";
 
+type ModoVisualizacaoProjeto = "tabela" | "quadro";
+
 export function PaginaProjetos(): JSX.Element {
   const clienteConsulta = useQueryClient();
   const { ehColaborador } = usarAutenticacao();
   const { mostrarErro, mostrarSucesso } = usarNotificacao();
   const [projetoEmEdicao, setProjetoEmEdicao] = useState<ProjetoResposta | null>(null);
+  const [projetoParaExcluir, setProjetoParaExcluir] = useState<ProjetoResposta | null>(null);
+  const [modalProjetoAberto, setModalProjetoAberto] = useState(false);
+  const [modoVisualizacao, setModoVisualizacao] =
+    useState<ModoVisualizacaoProjeto>("tabela");
   const [textoBusca, setTextoBusca] = useState("");
   const [criterioOrdenacao, setCriterioOrdenacao] =
     useState<CriterioOrdenacaoProjeto>("data_mais_recente");
   const [somenteComDescricao, setSomenteComDescricao] = useState(false);
+
+  useEffect(() => {
+    if (!modalProjetoAberto && !projetoParaExcluir) {
+      return undefined;
+    }
+
+    function tratarTeclaEscape(evento: KeyboardEvent): void {
+      if (evento.key !== "Escape") {
+        return;
+      }
+
+      if (projetoParaExcluir) {
+        setProjetoParaExcluir(null);
+        return;
+      }
+
+      setModalProjetoAberto(false);
+      setProjetoEmEdicao(null);
+    }
+
+    window.addEventListener("keydown", tratarTeclaEscape);
+
+    return () => {
+      window.removeEventListener("keydown", tratarTeclaEscape);
+    };
+  }, [modalProjetoAberto, projetoParaExcluir]);
 
   const consultaProjetos = useQuery({
     queryKey: ["projetos"],
@@ -90,31 +126,56 @@ export function PaginaProjetos(): JSX.Element {
     if (projetoEmEdicao) {
       await mutacaoAtualizarProjeto.mutateAsync({ id: projetoEmEdicao.id, dados });
       setProjetoEmEdicao(null);
+      setModalProjetoAberto(false);
       return;
     }
 
     await mutacaoCriarProjeto.mutateAsync(dados);
+    setModalProjetoAberto(false);
   }
 
-  async function excluirProjetoComConfirmacao(id: string, nome: string): Promise<void> {
+  function abrirModalNovoProjeto(): void {
+    if (ehColaborador) {
+      mostrarErro("Colaborador nao pode criar projetos.");
+      return;
+    }
+
+    setProjetoEmEdicao(null);
+    setModalProjetoAberto(true);
+  }
+
+  function abrirModalEdicaoProjeto(projeto: ProjetoResposta): void {
+    if (ehColaborador) {
+      mostrarErro("Colaborador nao pode editar projetos.");
+      return;
+    }
+
+    setProjetoEmEdicao(projeto);
+    setModalProjetoAberto(true);
+  }
+
+  function abrirModalConfirmacaoExclusao(projeto: ProjetoResposta): void {
     if (ehColaborador) {
       mostrarErro("Colaborador nao pode excluir projetos.");
       return;
     }
 
-    const confirmouExclusao = window.confirm(
-      `Deseja realmente excluir o projeto "${nome}"?`
-    );
+    setProjetoParaExcluir(projeto);
+  }
 
-    if (!confirmouExclusao) {
+  async function confirmarExclusaoProjeto(): Promise<void> {
+    if (!projetoParaExcluir) {
       return;
     }
 
-    await mutacaoExcluirProjeto.mutateAsync(id);
+    await mutacaoExcluirProjeto.mutateAsync(projetoParaExcluir.id);
 
-    if (projetoEmEdicao?.id === id) {
+    if (projetoEmEdicao?.id === projetoParaExcluir.id) {
       setProjetoEmEdicao(null);
+      setModalProjetoAberto(false);
     }
+
+    setProjetoParaExcluir(null);
   }
 
   function limparFiltros(): void {
@@ -170,6 +231,28 @@ export function PaginaProjetos(): JSX.Element {
       );
     });
   }, [consultaProjetos.data, criterioOrdenacao, somenteComDescricao, textoBusca]);
+
+  const colunasQuadroProjetos = useMemo(() => {
+    const gruposPorArea = new Map<string, ProjetoResposta[]>();
+
+    projetosFiltrados.forEach((projeto) => {
+      const nomeArea = obterNomesAreasProjeto(projeto)[0] ?? "Sem area";
+      const listaAtual = gruposPorArea.get(nomeArea) ?? [];
+      listaAtual.push(projeto);
+      gruposPorArea.set(nomeArea, listaAtual);
+    });
+
+    return Array.from(gruposPorArea.entries())
+      .map(([areaNome, projetos]) => ({
+        areaNome,
+        projetos: [...projetos].sort((projetoAtual, proximoProjeto) =>
+          projetoAtual.nome.localeCompare(proximoProjeto.nome, "pt-BR")
+        ),
+      }))
+      .sort((grupoAtual, proximoGrupo) =>
+        grupoAtual.areaNome.localeCompare(proximoGrupo.areaNome, "pt-BR")
+      );
+  }, [projetosFiltrados]);
 
   const totalProjetos = consultaProjetos.data?.length ?? 0;
   const totalProjetosComDescricao =
@@ -228,7 +311,7 @@ export function PaginaProjetos(): JSX.Element {
   }
 
   return (
-    <section className="pagina-conteudo pagina-projetos">
+    <section className="pagina-conteudo pagina-projetos pagina-projetos-modernizada">
       <header className="cabecalho-pagina cabecalho-projetos">
         <div>
           <h1>Projetos</h1>
@@ -236,6 +319,16 @@ export function PaginaProjetos(): JSX.Element {
         </div>
 
         <div className="acoes-cabecalho-projetos">
+          {!ehColaborador && (
+            <button
+              type="button"
+              className="botao-secundario botao-acao-principal-projeto"
+              onClick={abrirModalNovoProjeto}
+            >
+              + Novo projeto
+            </button>
+          )}
+
           <button
             type="button"
             className="botao-secundario"
@@ -336,54 +429,28 @@ export function PaginaProjetos(): JSX.Element {
         </button>
       </article>
 
-      <div className="grade-duas-colunas grade-projetos-principal">
-        {!ehColaborador ? (
-          <FormularioProjeto
-            areas={consultaAreas.data ?? []}
-            gestores={(consultaUsuarios.data ?? []).map((usuario) => ({
-              id: usuario.id,
-              nome: usuario.nome,
-              email: usuario.email,
-            }))}
-            emEnvio={mutacaoCriarProjeto.isPending || mutacaoAtualizarProjeto.isPending}
-            aoEnviar={async (dados) =>
-              enviarProjeto({
-                nome: dados.nome,
-                descricao: dados.descricao || null,
-                areaId: dados.areaId,
-                gestorUsuarioId: dados.gestorUsuarioId || null,
-              })
-            }
-            valoresIniciais={
-              projetoEmEdicao
-                ? {
-                    nome: projetoEmEdicao.nome,
-                    descricao: projetoEmEdicao.descricao ?? "",
-                    areaId: projetoEmEdicao.areaId,
-                    gestorUsuarioId: projetoEmEdicao.gestorUsuarioId ?? null,
-                  }
-                : undefined
-            }
-            titulo={projetoEmEdicao ? "Editar projeto" : "Novo projeto"}
-            rotuloBotao={projetoEmEdicao ? "Atualizar projeto" : "Salvar projeto"}
-            rotuloBotaoEmEnvio={
-              projetoEmEdicao ? "Atualizando..." : "Salvando..."
-            }
-            aoCancelarEdicao={
-              projetoEmEdicao ? () => setProjetoEmEdicao(null) : undefined
-            }
-          />
-        ) : (
-          <article className="cartao-listagem">
-            <h3>Permissao de colaborador</h3>
-            <p>Seu perfil possui acesso somente de visualizacao para projetos.</p>
-          </article>
-        )}
-
-        <article className="cartao-listagem cartao-listagem-projetos">
+      <article className="cartao-listagem cartao-listagem-projetos cartao-listagem-projetos-modernizado">
           <header className="cabecalho-listagem-projetos">
             <h3>Projetos cadastrados</h3>
-            <span>{projetosFiltrados.length} encontrados</span>
+            <div className="acoes-listagem-projetos">
+              <span>{projetosFiltrados.length} encontrados</span>
+              <div className="alternador-visualizacao-projetos">
+                <button
+                  type="button"
+                  className={modoVisualizacao === "tabela" ? "ativo" : ""}
+                  onClick={() => setModoVisualizacao("tabela")}
+                >
+                  Tabela
+                </button>
+                <button
+                  type="button"
+                  className={modoVisualizacao === "quadro" ? "ativo" : ""}
+                  onClick={() => setModoVisualizacao("quadro")}
+                >
+                  Quadros
+                </button>
+              </div>
+            </div>
           </header>
 
           {consultaProjetos.isLoading && (
@@ -414,9 +481,7 @@ export function PaginaProjetos(): JSX.Element {
             !existemProjetosNoSistema && (
               <div className="estado-vazio-projetos">
                 <p>Nenhum projeto cadastrado ate o momento.</p>
-                <span>
-                  Use o formulario ao lado para iniciar a organizacao da carteira.
-                </span>
+                <span>Inicie cadastrando o primeiro projeto da sua carteira.</span>
               </div>
             )}
 
@@ -436,58 +501,292 @@ export function PaginaProjetos(): JSX.Element {
               </div>
             )}
 
-          {existemProjetosFiltrados && (
-            <ul className="lista-com-acoes">
-              {projetosFiltrados.map((projeto) => (
-                <li
-                  className={`item-listagem item-listagem-projeto${
-                    projetoEmEdicao?.id === projeto.id
-                      ? " item-listagem-projeto-edicao"
-                      : ""
-                  }`}
-                  key={projeto.id}
-                >
-                  <div className="conteudo-item-listagem">
-                    <div className="topo-item-projeto">
-                      <strong>{projeto.nome}</strong>
-                      <span className="selo-sucesso-projeto">{projeto.areaNome}</span>
-                      {projeto.descricao && projeto.descricao.trim().length > 0 ? (
-                        <span className="selo-sucesso-projeto">Descricao registrada</span>
-                      ) : (
-                        <span className="selo-alerta-projeto">Sem descricao</span>
-                      )}
-                    </div>
+          {existemProjetosFiltrados && modoVisualizacao === "tabela" && (
+            <div className="container-tabela-projetos">
+              <table className="tabela-projetos">
+                <thead>
+                  <tr>
+                    <th>Projeto</th>
+                    <th>Areas</th>
+                    <th>Pessoas</th>
+                    <th>Criacao</th>
+                    <th>Descricao</th>
+                    <th>Acoes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projetosFiltrados.map((projeto) => {
+                    const nomesAreas = obterNomesAreasProjeto(projeto);
+                    const nomesPessoas = obterNomesPessoasProjeto(projeto);
 
-                    <span>{projeto.descricao || "Sem descricao."}</span>
-                    <small>Criado em {formatarDataHora(projeto.dataCriacao)}</small>
-                    {projeto.gestorNome && <small>Gestor: {projeto.gestorNome}</small>}
-                  </div>
-
-                  <div className="acoes-item-listagem">
-                    <button
-                      type="button"
-                      className="botao-secundario"
-                      onClick={() => setProjetoEmEdicao(projeto)}
-                      disabled={mutacaoExcluirProjeto.isPending || ehColaborador}
-                    >
-                      Editar
-                    </button>
-
-                    <button
-                      type="button"
-                      className="botao-perigo"
-                      onClick={() => excluirProjetoComConfirmacao(projeto.id, projeto.nome)}
-                      disabled={mutacaoExcluirProjeto.isPending || ehColaborador}
-                    >
-                      Excluir
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                    return (
+                      <tr key={projeto.id}>
+                        <td>
+                          <div className="coluna-projeto-principal">
+                            <strong>{projeto.nome}</strong>
+                            <span>ID: {projeto.id.slice(0, 8)}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="lista-selos-listagem">
+                            {nomesAreas.map((nomeArea) => (
+                              <span key={`${projeto.id}-${nomeArea}`} className="selo-sucesso-projeto">
+                                {nomeArea}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          {nomesPessoas.length > 0 ? (
+                            <div className="lista-selos-listagem">
+                              {nomesPessoas.map((nomePessoa) => (
+                                <span
+                                  key={`${projeto.id}-${nomePessoa}`}
+                                  className="selo-secundario-projeto"
+                                >
+                                  {nomePessoa}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            "Sem vinculacoes"
+                          )}
+                        </td>
+                        <td>{formatarDataHora(projeto.dataCriacao)}</td>
+                        <td>{projeto.descricao || "Sem descricao."}</td>
+                        <td>
+                          <div className="acoes-item-listagem acoes-icones-projeto">
+                            <button
+                              type="button"
+                              className="botao-icone-acao botao-icone-editar"
+                              onClick={() => abrirModalEdicaoProjeto(projeto)}
+                              disabled={mutacaoExcluirProjeto.isPending || ehColaborador}
+                              aria-label={`Editar projeto ${projeto.nome}`}
+                              title="Editar projeto"
+                            >
+                              <IconeEditar />
+                            </button>
+                            <button
+                              type="button"
+                              className="botao-icone-acao botao-icone-excluir"
+                              onClick={() => abrirModalConfirmacaoExclusao(projeto)}
+                              disabled={mutacaoExcluirProjeto.isPending || ehColaborador}
+                              aria-label={`Excluir projeto ${projeto.nome}`}
+                              title="Excluir projeto"
+                            >
+                              <IconeExcluir />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
-        </article>
-      </div>
+
+          {existemProjetosFiltrados && modoVisualizacao === "quadro" && (
+            <div className="quadro-projetos">
+              {colunasQuadroProjetos.map((grupo) => (
+                <article className="coluna-quadro-projetos" key={grupo.areaNome}>
+                  <header>
+                    <h4>{grupo.areaNome}</h4>
+                    <span>{grupo.projetos.length} projeto(s)</span>
+                  </header>
+                  <ul>
+                    {grupo.projetos.map((projeto) => (
+                      <li className="cartao-quadro-projeto" key={projeto.id}>
+                        {(() => {
+                          const nomesAreas = obterNomesAreasProjeto(projeto);
+                          const nomesPessoas = obterNomesPessoasProjeto(projeto);
+
+                          return (
+                            <>
+                              <div className="topo-item-projeto">
+                                <strong>{projeto.nome}</strong>
+                                {projeto.descricao ? (
+                                  <span className="selo-sucesso-projeto">Descricao registrada</span>
+                                ) : (
+                                  <span className="selo-alerta-projeto">Sem descricao</span>
+                                )}
+                              </div>
+                              <div className="lista-selos-listagem">
+                                {nomesAreas.map((nomeArea) => (
+                                  <span
+                                    key={`${projeto.id}-area-${nomeArea}`}
+                                    className="selo-sucesso-projeto"
+                                  >
+                                    {nomeArea}
+                                  </span>
+                                ))}
+                              </div>
+                              <span>{projeto.descricao || "Sem descricao."}</span>
+                              {nomesPessoas.length > 0 && (
+                                <small>Pessoas: {nomesPessoas.join(", ")}</small>
+                              )}
+                              <small>Criado em {formatarDataHora(projeto.dataCriacao)}</small>
+
+                              <div className="acoes-item-listagem acoes-icones-projeto">
+                                <button
+                                  type="button"
+                                  className="botao-icone-acao botao-icone-editar"
+                                  onClick={() => abrirModalEdicaoProjeto(projeto)}
+                                  disabled={mutacaoExcluirProjeto.isPending || ehColaborador}
+                                  aria-label={`Editar projeto ${projeto.nome}`}
+                                  title="Editar projeto"
+                                >
+                                  <IconeEditar />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="botao-icone-acao botao-icone-excluir"
+                                  onClick={() => abrirModalConfirmacaoExclusao(projeto)}
+                                  disabled={mutacaoExcluirProjeto.isPending || ehColaborador}
+                                  aria-label={`Excluir projeto ${projeto.nome}`}
+                                  title="Excluir projeto"
+                                >
+                                  <IconeExcluir />
+                                </button>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          )}
+      </article>
+
+      {modalProjetoAberto && !ehColaborador && (
+        <div className="sobreposicao-modal" role="presentation">
+          <section
+            className="cartao-modal cartao-modal-projeto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tituloModalProjeto"
+          >
+            <header className="cabecalho-modal">
+              <h3 id="tituloModalProjeto">
+                {projetoEmEdicao ? "Editar projeto" : "Novo projeto"}
+              </h3>
+              <button
+                type="button"
+                className="botao-fechar-modal"
+                onClick={() => {
+                  setModalProjetoAberto(false);
+                  setProjetoEmEdicao(null);
+                }}
+                aria-label="Fechar modal de projeto"
+              >
+                x
+              </button>
+            </header>
+
+            <FormularioProjeto
+              areas={consultaAreas.data ?? []}
+              pessoas={(consultaUsuarios.data ?? []).map((usuario) => ({
+                id: usuario.id,
+                nome: usuario.nome,
+                email: usuario.email,
+              }))}
+              emEnvio={mutacaoCriarProjeto.isPending || mutacaoAtualizarProjeto.isPending}
+              aoEnviar={async (dados) =>
+                enviarProjeto({
+                  nome: dados.nome,
+                  descricao: dados.descricao || null,
+                  areaId: dados.areaIds[0],
+                  areaIds: dados.areaIds,
+                  gestorUsuarioId: dados.usuarioIdsVinculados[0] ?? null,
+                  usuarioIdsVinculados: dados.usuarioIdsVinculados,
+                })
+              }
+              valoresIniciais={
+                projetoEmEdicao
+                  ? {
+                      nome: projetoEmEdicao.nome,
+                      descricao: projetoEmEdicao.descricao ?? "",
+                      areaIds:
+                        projetoEmEdicao.areaIds && projetoEmEdicao.areaIds.length > 0
+                          ? projetoEmEdicao.areaIds
+                          : [projetoEmEdicao.areaId],
+                      usuarioIdsVinculados:
+                        projetoEmEdicao.usuarioIdsVinculados &&
+                        projetoEmEdicao.usuarioIdsVinculados.length > 0
+                          ? projetoEmEdicao.usuarioIdsVinculados
+                          : projetoEmEdicao.gestorUsuarioId
+                            ? [projetoEmEdicao.gestorUsuarioId]
+                            : [],
+                    }
+                  : undefined
+              }
+              titulo={projetoEmEdicao ? "Atualizar dados do projeto" : "Cadastrar novo projeto"}
+              rotuloBotao={projetoEmEdicao ? "Salvar alteracoes" : "Criar projeto"}
+              rotuloBotaoEmEnvio={
+                projetoEmEdicao ? "Salvando..." : "Criando..."
+              }
+              aoCancelarEdicao={() => {
+                setModalProjetoAberto(false);
+                setProjetoEmEdicao(null);
+              }}
+            />
+          </section>
+        </div>
+      )}
+
+      {projetoParaExcluir && (
+        <div className="sobreposicao-modal" role="presentation">
+          <section
+            className="cartao-modal cartao-modal-confirmacao"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tituloModalExclusaoProjeto"
+          >
+            <header className="cabecalho-modal">
+              <h3 id="tituloModalExclusaoProjeto">Confirmar exclusao de projeto</h3>
+              <button
+                type="button"
+                className="botao-fechar-modal"
+                onClick={() => setProjetoParaExcluir(null)}
+                aria-label="Fechar confirmacao de exclusao"
+              >
+                x
+              </button>
+            </header>
+
+            <p>
+              Deseja realmente excluir o projeto <strong>{projetoParaExcluir.nome}</strong>?
+            </p>
+            <span className="mensagem-erro">
+              Esta acao pode impactar tarefas vinculadas ao projeto.
+            </span>
+
+            <div className="linha-botoes-formulario">
+              <button
+                type="button"
+                className="botao-perigo"
+                onClick={() => {
+                  void confirmarExclusaoProjeto();
+                }}
+                disabled={mutacaoExcluirProjeto.isPending}
+              >
+                {mutacaoExcluirProjeto.isPending ? "Excluindo..." : "Excluir projeto"}
+              </button>
+              <button
+                type="button"
+                className="botao-secundario"
+                onClick={() => setProjetoParaExcluir(null)}
+                disabled={mutacaoExcluirProjeto.isPending}
+              >
+                Cancelar
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
@@ -498,6 +797,33 @@ function normalizarTexto(texto: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase();
+}
+
+function obterNomesAreasProjeto(projeto: ProjetoResposta): string[] {
+  if (projeto.areasNomes && projeto.areasNomes.length > 0) {
+    return projeto.areasNomes;
+  }
+
+  if (projeto.areaNome && projeto.areaNome.trim().length > 0) {
+    return [projeto.areaNome];
+  }
+
+  return ["Sem area"];
+}
+
+function obterNomesPessoasProjeto(projeto: ProjetoResposta): string[] {
+  if (
+    projeto.usuariosNomesVinculados &&
+    projeto.usuariosNomesVinculados.length > 0
+  ) {
+    return projeto.usuariosNomesVinculados;
+  }
+
+  if (projeto.gestorNome && projeto.gestorNome.trim().length > 0) {
+    return [projeto.gestorNome];
+  }
+
+  return [];
 }
 
 function formatarDataHora(data: string): string {
@@ -515,3 +841,26 @@ function obterMensagemErro(excecao: unknown, mensagemPadrao: string): string {
 
   return mensagemPadrao;
 }
+
+function IconeEditar(): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+      <path
+        d="M4 20h4l10-10-4-4L4 16v4zm14.7-11.3 1.6-1.6a1 1 0 0 0 0-1.4l-2-2a1 1 0 0 0-1.4 0l-1.6 1.6 3.4 3.4z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconeExcluir(): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+      <path
+        d="M9 3h6l1 2h4v2H4V5h4l1-2zm-2 6h10l-1 11a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2L7 9zm3 2v8h2v-8h-2zm4 0v8h2v-8h-2z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+

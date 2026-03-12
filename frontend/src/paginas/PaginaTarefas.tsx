@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormularioTarefa } from "../funcionalidades/tarefas/FormularioTarefa";
-import { QuadroTarefasOperacional } from "../funcionalidades/tarefas/QuadroTarefasOperacional";
 import { TabelaTarefasOperacional } from "../funcionalidades/tarefas/TabelaTarefasOperacional";
 import { usarAutenticacao } from "../ganchos/usarAutenticacao";
 import { usarNotificacao } from "../ganchos/usarNotificacao";
@@ -46,7 +45,6 @@ interface CartaoResumoTarefas {
 }
 
 const CHAVE_FILTROS_TAREFAS = "tarefas_filtros_persistidos_v1";
-const CHAVE_FILTRO_FAVORITO_TAREFAS = "tarefas_filtro_favorito_v1";
 
 const nomesStatus: Record<StatusTarefa, string> = {
   [StatusTarefa.Pendente]: "Pendente",
@@ -101,7 +99,7 @@ export function PaginaTarefas(): JSX.Element {
     () => filtrosIniciais.current?.dataPrazoFinalFiltro ?? ""
   );
   const [campoOrdenacao, setCampoOrdenacao] = useState<CampoOrdenacaoTarefa>(
-    () => filtrosIniciais.current?.campoOrdenacao ?? CampoOrdenacaoTarefa.DataPrazo
+    () => filtrosIniciais.current?.campoOrdenacao ?? CampoOrdenacaoTarefa.DataCriacao
   );
   const [direcaoOrdenacao, setDirecaoOrdenacao] =
     useState<DirecaoOrdenacaoTarefa>(
@@ -116,7 +114,7 @@ export function PaginaTarefas(): JSX.Element {
   const [textoBusca, setTextoBusca] = useState(
     () => filtrosIniciais.current?.textoBusca ?? ""
   );
-  const [visualizacao, setVisualizacao] = useState<VisualizacaoTarefas>(
+  const [visualizacao] = useState<VisualizacaoTarefas>(
     () => filtrosIniciais.current?.visualizacao ?? "lista"
   );
   const [chipsAtivos, setChipsAtivos] = useState<ChipRapidoTarefas[]>(
@@ -125,6 +123,8 @@ export function PaginaTarefas(): JSX.Element {
   const [idsSelecionados, setIdsSelecionados] = useState<string[]>([]);
   const [statusLote, setStatusLote] = useState("");
   const [tarefaEmEdicao, setTarefaEmEdicao] = useState<TarefaResposta | null>(null);
+  const [modalTarefaAberto, setModalTarefaAberto] = useState(false);
+  const [tarefaParaExcluir, setTarefaParaExcluir] = useState<TarefaResposta | null>(null);
   const [executandoAcaoLote, setExecutandoAcaoLote] = useState(false);
   const [momentoUltimaSincronizacao, setMomentoUltimaSincronizacao] =
     useState<Date | null>(null);
@@ -296,25 +296,6 @@ export function PaginaTarefas(): JSX.Element {
     });
   }, [chipsAtivos, tarefasServidor, textoBusca]);
 
-  const tarefasPorStatus = useMemo(() => {
-    const mapa = new Map<StatusTarefa, TarefaResposta[]>();
-
-    Object.values(StatusTarefa)
-      .filter((valor): valor is StatusTarefa => typeof valor === "number")
-      .forEach((status) => {
-        mapa.set(status, []);
-      });
-
-    tarefasFiltradas.forEach((tarefa) => {
-      const listaStatus = mapa.get(tarefa.status);
-      if (listaStatus) {
-        listaStatus.push(tarefa);
-      }
-    });
-
-    return mapa;
-  }, [tarefasFiltradas]);
-
   const cartoesResumo = useMemo<CartaoResumoTarefas[]>(() => {
     const total = tarefasFiltradas.length;
     const atrasadas = tarefasFiltradas.filter((tarefa) => tarefa.estaAtrasada).length;
@@ -377,6 +358,29 @@ export function PaginaTarefas(): JSX.Element {
   }, [tarefasFiltradas]);
 
   useEffect(() => {
+    if (!modalTarefaAberto && !tarefaParaExcluir) {
+      return undefined;
+    }
+
+    function tratarTeclaEscape(evento: KeyboardEvent): void {
+      if (evento.key !== "Escape") {
+        return;
+      }
+
+      if (tarefaParaExcluir) {
+        setTarefaParaExcluir(null);
+        return;
+      }
+
+      setModalTarefaAberto(false);
+      setTarefaEmEdicao(null);
+    }
+
+    window.addEventListener("keydown", tratarTeclaEscape);
+    return () => window.removeEventListener("keydown", tratarTeclaEscape);
+  }, [modalTarefaAberto, tarefaParaExcluir]);
+
+  useEffect(() => {
     const assinaturaAtual = tarefasServidor
       .map(
         (tarefa) =>
@@ -411,8 +415,9 @@ export function PaginaTarefas(): JSX.Element {
         campoBuscaRef.current?.focus();
       } else if (evento.key.toLowerCase() === "n") {
         evento.preventDefault();
-        const campoTitulo = document.getElementById("tituloTarefa") as HTMLInputElement | null;
-        campoTitulo?.focus();
+        if (!ehColaborador) {
+          abrirModalNovaTarefa();
+        }
       } else if (evento.key.toLowerCase() === "r") {
         evento.preventDefault();
         void atualizarDadosTarefas();
@@ -421,7 +426,7 @@ export function PaginaTarefas(): JSX.Element {
 
     window.addEventListener("keydown", tratarAtalhos);
     return () => window.removeEventListener("keydown", tratarAtalhos);
-  });
+  }, [ehColaborador]);
 
   async function atualizarDadosTarefas(): Promise<void> {
     await Promise.all([
@@ -433,53 +438,14 @@ export function PaginaTarefas(): JSX.Element {
     mostrarInformacao("Dados de tarefas atualizados.");
   }
 
-  function salvarFiltroFavorito(): void {
-    const filtroFavorito: FiltrosTarefasPersistidos = {
-      projetoIdFiltro,
-      statusFiltro,
-      responsavelUsuarioIdFiltro,
-      dataPrazoInicialFiltro,
-      dataPrazoFinalFiltro,
-      campoOrdenacao,
-      direcaoOrdenacao,
-      tamanhoPagina,
-      textoBusca,
-      visualizacao,
-      chipsAtivos,
-    };
-
-    window.localStorage.setItem(
-      CHAVE_FILTRO_FAVORITO_TAREFAS,
-      JSON.stringify(filtroFavorito)
-    );
-    mostrarSucesso("Filtro favorito salvo.");
-  }
-
-  function carregarFiltroFavorito(): void {
-    try {
-      const valor = window.localStorage.getItem(CHAVE_FILTRO_FAVORITO_TAREFAS);
-      if (!valor) {
-        mostrarErro("Nenhum filtro favorito salvo.");
-        return;
-      }
-
-      const filtroFavorito = JSON.parse(valor) as FiltrosTarefasPersistidos;
-      setProjetoIdFiltro(filtroFavorito.projetoIdFiltro);
-      setStatusFiltro(filtroFavorito.statusFiltro);
-      setResponsavelUsuarioIdFiltro(filtroFavorito.responsavelUsuarioIdFiltro);
-      setDataPrazoInicialFiltro(filtroFavorito.dataPrazoInicialFiltro);
-      setDataPrazoFinalFiltro(filtroFavorito.dataPrazoFinalFiltro);
-      setCampoOrdenacao(filtroFavorito.campoOrdenacao);
-      setDirecaoOrdenacao(filtroFavorito.direcaoOrdenacao);
-      setTamanhoPagina(filtroFavorito.tamanhoPagina);
-      setTextoBusca(filtroFavorito.textoBusca);
-      setVisualizacao(filtroFavorito.visualizacao);
-      setChipsAtivos(filtroFavorito.chipsAtivos);
-      setNumeroPagina(1);
-      mostrarSucesso("Filtro favorito carregado.");
-    } catch {
-      mostrarErro("Falha ao carregar filtro favorito.");
+  function abrirModalNovaTarefa(): void {
+    if (ehColaborador) {
+      mostrarErro("Colaborador nao pode criar tarefas.");
+      return;
     }
+
+    setTarefaEmEdicao(null);
+    setModalTarefaAberto(true);
   }
 
   function alternarChipRapido(chip: ChipRapidoTarefas): void {
@@ -497,7 +463,7 @@ export function PaginaTarefas(): JSX.Element {
     setResponsavelUsuarioIdFiltro("");
     setDataPrazoInicialFiltro("");
     setDataPrazoFinalFiltro("");
-    setCampoOrdenacao(CampoOrdenacaoTarefa.DataPrazo);
+    setCampoOrdenacao(CampoOrdenacaoTarefa.DataCriacao);
     setDirecaoOrdenacao(DirecaoOrdenacaoTarefa.Ascendente);
     setNumeroPagina(1);
     setTamanhoPagina(10);
@@ -508,30 +474,11 @@ export function PaginaTarefas(): JSX.Element {
     setTarefaEmEdicao(null);
   }
 
-  function aplicarMinhaVisao(): void {
-    setProjetoIdFiltro("");
-    setStatusFiltro("");
-    setResponsavelUsuarioIdFiltro(sessao?.usuarioId ?? "");
-    setDataPrazoInicialFiltro("");
-    setDataPrazoFinalFiltro("");
-    setTextoBusca("");
-    setChipsAtivos(["atrasadas"]);
-    setNumeroPagina(1);
-  }
-
-  function aplicarOperacaoDiaria(): void {
-    const hoje = converterParaDataInput(new Date());
-    setProjetoIdFiltro("");
-    setStatusFiltro(String(StatusTarefa.EmAndamento));
-    setResponsavelUsuarioIdFiltro("");
-    setDataPrazoInicialFiltro(hoje);
-    setDataPrazoFinalFiltro(hoje);
-    setTextoBusca("");
-    setChipsAtivos(["vence_hoje"]);
-    setNumeroPagina(1);
-  }
-
   function alternarOrdenacaoPorCabecalho(campo: CampoOrdenacaoTarefa): void {
+    if (campo === CampoOrdenacaoTarefa.DataPrazo) {
+      return;
+    }
+
     if (campoOrdenacao === campo) {
       setDirecaoOrdenacao((direcaoAtual) =>
         direcaoAtual === DirecaoOrdenacaoTarefa.Ascendente
@@ -566,25 +513,28 @@ export function PaginaTarefas(): JSX.Element {
     await mutacaoAtualizarStatus.mutateAsync({ id: tarefa.id, status: novoStatus });
   }
 
-  async function excluirTarefaComConfirmacao(tarefa: TarefaResposta): Promise<void> {
+  function solicitarExclusaoTarefa(tarefa: TarefaResposta): void {
     if (ehColaborador) {
       mostrarErro("Colaborador nao pode excluir tarefas.");
       return;
     }
 
-    const confirmouExclusao = window.confirm(
-      `Deseja realmente excluir a tarefa "${tarefa.titulo}"?`
-    );
+    setTarefaParaExcluir(tarefa);
+  }
 
-    if (!confirmouExclusao) {
+  async function confirmarExclusaoTarefa(): Promise<void> {
+    if (!tarefaParaExcluir) {
       return;
     }
 
-    await mutacaoExcluirTarefa.mutateAsync(tarefa.id);
+    await mutacaoExcluirTarefa.mutateAsync(tarefaParaExcluir.id);
 
-    if (tarefaEmEdicao?.id === tarefa.id) {
+    if (tarefaEmEdicao?.id === tarefaParaExcluir.id) {
       setTarefaEmEdicao(null);
+      setModalTarefaAberto(false);
     }
+
+    setTarefaParaExcluir(null);
   }
 
   function iniciarEdicaoTarefa(tarefa: TarefaResposta): void {
@@ -594,6 +544,7 @@ export function PaginaTarefas(): JSX.Element {
     }
 
     setTarefaEmEdicao(tarefa);
+    setModalTarefaAberto(true);
   }
 
   function alternarSelecaoTarefa(id: string): void {
@@ -787,6 +738,15 @@ export function PaginaTarefas(): JSX.Element {
           <p>Visao operacional com filtros avancados e duas visualizacoes.</p>
         </div>
         <div className="acoes-cabecalho-tarefas">
+          {!ehColaborador && (
+            <button
+              type="button"
+              className="botao-secundario botao-acao-principal-projeto"
+              onClick={abrirModalNovaTarefa}
+            >
+              + Nova tarefa
+            </button>
+          )}
           <button type="button" className="botao-secundario" onClick={() => void atualizarDadosTarefas()}>
             Atualizar
           </button>
@@ -807,14 +767,14 @@ export function PaginaTarefas(): JSX.Element {
       </section>
 
       {historicoNotificacoes.length > 0 && (
-        <article className="cartao-listagem">
+        <article className="cartao-listagem painel-notificacoes-tarefas-resumido">
           <header className="cabecalho-listagem-projetos">
             <h3>Notificacoes recentes</h3>
-            <span>{Math.min(historicoNotificacoes.length, 5)} exibidas</span>
+            <span>{Math.min(historicoNotificacoes.length, 3)} exibidas</span>
           </header>
-          <ul className="lista-com-acoes">
-            {historicoNotificacoes.slice(0, 5).map((notificacao) => (
-              <li className="item-listagem" key={notificacao.id}>
+          <ul className="lista-com-acoes lista-notificacoes-resumida">
+            {historicoNotificacoes.slice(0, 3).map((notificacao) => (
+              <li className="item-listagem item-notificacao-resumida" key={notificacao.id}>
                 <div className="conteudo-item-listagem">
                   <strong>{notificacao.tituloTarefa}</strong>
                   <span>{notificacao.mensagem}</span>
@@ -829,14 +789,6 @@ export function PaginaTarefas(): JSX.Element {
       <article className="cartao-filtros painel-filtros-tarefas">
         <header className="cabecalho-painel-filtros-tarefas">
           <h3>Filtros e ordenacao</h3>
-          <div className="acoes-salvar-filtros-tarefas">
-            <button type="button" className="botao-secundario" onClick={salvarFiltroFavorito}>
-              Salvar favorito
-            </button>
-            <button type="button" className="botao-secundario" onClick={carregarFiltroFavorito}>
-              Carregar favorito
-            </button>
-          </div>
         </header>
         <div className="grade-filtros grade-filtros-tarefas">
           <label htmlFor="filtroBuscaTarefa">
@@ -906,7 +858,7 @@ export function PaginaTarefas(): JSX.Element {
             Ordenar por
             <select id="filtroCampoOrdenacao" value={campoOrdenacao} onChange={(evento) => setCampoOrdenacao(Number(evento.target.value) as CampoOrdenacaoTarefa)}>
               {Object.values(CampoOrdenacaoTarefa)
-                .filter((valor) => typeof valor === "number")
+                .filter((valor) => typeof valor === "number" && valor !== CampoOrdenacaoTarefa.DataPrazo)
                 .map((campo) => (
                   <option key={campo} value={campo}>
                     {nomesCamposOrdenacao[campo as CampoOrdenacaoTarefa]}
@@ -952,12 +904,6 @@ export function PaginaTarefas(): JSX.Element {
         </div>
 
         <div className="acoes-rapidas-filtros-tarefas">
-          <button type="button" className="botao-secundario" onClick={aplicarMinhaVisao}>
-            Minha visao
-          </button>
-          <button type="button" className="botao-secundario" onClick={aplicarOperacaoDiaria}>
-            Operacao diaria
-          </button>
           <button type="button" className="botao-secundario" onClick={limparFiltros}>
             Limpar filtros
           </button>
@@ -968,215 +914,278 @@ export function PaginaTarefas(): JSX.Element {
         </p>
       </article>
 
-      <div className="grade-duas-colunas grade-tarefas-principal">
-        {!ehColaborador ? (
-          <FormularioTarefa
-            projetos={consultaProjetos.data ?? []}
-            usuariosResponsaveis={usuariosResponsaveis}
-            responsavelUsuarioIdPadrao={sessao?.usuarioId ?? ""}
-            emEnvio={mutacaoCriarTarefa.isPending || mutacaoAtualizarTarefa.isPending}
-            titulo={tarefaEmEdicao ? "Editar tarefa" : "Nova tarefa"}
-            rotuloBotao={tarefaEmEdicao ? "Atualizar tarefa" : "Salvar tarefa"}
-            rotuloBotaoEmEnvio={tarefaEmEdicao ? "Atualizando..." : "Salvando..."}
-            permitirPrazoPassado={Boolean(tarefaEmEdicao)}
-            valoresIniciais={
-              tarefaEmEdicao
-                ? {
-                    titulo: tarefaEmEdicao.titulo,
-                    descricao: tarefaEmEdicao.descricao ?? "",
-                    prioridade: tarefaEmEdicao.prioridade,
-                    projetoId: tarefaEmEdicao.projetoId,
-                    responsavelUsuarioId: tarefaEmEdicao.responsavelUsuarioId,
-                    dataPrazo: converterIsoParaDataInput(tarefaEmEdicao.dataPrazo),
-                  }
-                : undefined
-            }
-            aoCancelarEdicao={
-              tarefaEmEdicao ? () => setTarefaEmEdicao(null) : undefined
-            }
-            aoEnviar={async (dados) => {
-              if (tarefaEmEdicao) {
-                await mutacaoAtualizarTarefa.mutateAsync({
-                  id: tarefaEmEdicao.id,
-                  dados: {
-                    titulo: dados.titulo,
-                    descricao: dados.descricao || null,
-                    status: tarefaEmEdicao.status,
-                    prioridade: dados.prioridade,
-                    responsavelUsuarioId: dados.responsavelUsuarioId,
-                    dataPrazo: new Date(`${dados.dataPrazo}T23:59:59Z`).toISOString(),
-                  },
-                });
-                setTarefaEmEdicao(null);
-                return;
-              }
+      {ehColaborador && (
+        <article className="cartao-listagem aviso-permissao-colaborador">
+          <h3>Atualizacao de status</h3>
+          <p>
+            Seu perfil possui permissao para atualizar apenas o status das tarefas
+            atribuidas a voce.
+          </p>
+        </article>
+      )}
 
-              await mutacaoCriarTarefa.mutateAsync({
-                titulo: dados.titulo,
-                descricao: dados.descricao || null,
-                prioridade: dados.prioridade,
-                projetoId: dados.projetoId,
-                responsavelUsuarioId: dados.responsavelUsuarioId,
-                dataPrazo: new Date(`${dados.dataPrazo}T23:59:59Z`).toISOString(),
-              });
-            }}
-          />
-        ) : (
-          <article className="cartao-listagem">
-            <h3>Atualizacao de status</h3>
-            <p>
-              Seu perfil possui permissao para atualizar apenas o status das tarefas
-              atribuidas a voce.
-            </p>
-          </article>
+      <article className="cartao-listagem cartao-listagem-tarefas-modernizado cartao-listagem-tarefas-full">
+        <header className="cabecalho-listagem-tarefas">
+          <h3>Tarefas cadastradas</h3>
+          <div className="acoes-cabecalho-listagem-tarefas">
+            <span>
+              Exibindo {tarefasFiltradas.length} de {totalRegistros} registro(s)
+            </span>
+          </div>
+        </header>
+
+        <section className="painel-acoes-lote-tarefas">
+          <label htmlFor="statusLoteTarefas">
+            Alterar status em lote
+            <select
+              id="statusLoteTarefas"
+              value={statusLote}
+              onChange={(evento) => setStatusLote(evento.target.value)}
+              disabled={executandoAcaoLote || ehColaborador}
+            >
+              <option value="">Selecione</option>
+              {Object.values(StatusTarefa)
+                .filter((valor) => typeof valor === "number")
+                .map((status) => (
+                  <option key={status} value={status}>
+                    {nomesStatus[status as StatusTarefa]}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="botao-secundario"
+            onClick={() => void aplicarStatusEmLote()}
+            disabled={executandoAcaoLote || totalSelecionadas === 0 || ehColaborador}
+          >
+            Aplicar em selecionadas
+          </button>
+          <button
+            type="button"
+            className="botao-perigo"
+            onClick={() => void excluirSelecionadasEmLote()}
+            disabled={executandoAcaoLote || totalSelecionadas === 0 || ehColaborador}
+          >
+            Excluir selecionadas
+          </button>
+          <button
+            type="button"
+            className="botao-secundario"
+            onClick={alternarSelecaoTodasVisiveis}
+            disabled={tarefasFiltradas.length === 0}
+          >
+            {todasVisiveisSelecionadas ? "Desmarcar visiveis" : "Marcar visiveis"}
+          </button>
+          <span>{totalSelecionadas} selecionada(s)</span>
+        </section>
+
+        {momentoUltimaSincronizacao && (
+          <p className="rotulo-atualizacao-tarefas">
+            Sincronizado em {momentoUltimaSincronizacao.toLocaleTimeString("pt-BR")}
+          </p>
         )}
 
-        <article className="cartao-listagem cartao-listagem-tarefas-modernizado">
-          <header className="cabecalho-listagem-tarefas">
-            <h3>Tarefas cadastradas</h3>
-            <div className="acoes-cabecalho-listagem-tarefas">
+        {consultaTarefas.isLoading && (
+          <div className="lista-esqueleto-tarefas">
+            <div className="bloco-esqueleto bloco-esqueleto-linha-tarefa" />
+            <div className="bloco-esqueleto bloco-esqueleto-linha-tarefa" />
+          </div>
+        )}
+
+        {consultaTarefas.isError && (
+          <p className="mensagem-erro">
+            {obterMensagemErro(consultaTarefas.error, "Falha ao carregar tarefas.")}
+          </p>
+        )}
+
+        {semResultados && <p>Nenhuma tarefa encontrada com os filtros atuais.</p>}
+
+        {!consultaTarefas.isLoading && !consultaTarefas.isError && !semResultados && (
+          <>
+            <TabelaTarefasOperacional
+              tarefas={tarefasFiltradas}
+              idsSelecionados={idsSelecionados}
+              todasVisiveisSelecionadas={todasVisiveisSelecionadas}
+              mapaProjetos={mapaProjetos}
+              carregandoAtualizacaoStatus={mutacaoAtualizarStatus.isPending}
+              carregandoEdicao={mutacaoAtualizarTarefa.isPending}
+              carregandoExclusao={mutacaoExcluirTarefa.isPending}
+              permitirEditar={!ehColaborador}
+              permitirExcluir={!ehColaborador}
+              campoOrdenacao={campoOrdenacao}
+              direcaoOrdenacao={direcaoOrdenacao}
+              obterStatusPermitidos={obterStatusPermitidos}
+              aoAlternarSelecaoTodas={alternarSelecaoTodasVisiveis}
+              aoAlternarSelecao={alternarSelecaoTarefa}
+              aoAlterarStatus={(tarefa, novoStatus) =>
+                void alterarStatusDaTarefa(tarefa, novoStatus)
+              }
+              aoEditar={iniciarEdicaoTarefa}
+              aoExcluir={solicitarExclusaoTarefa}
+              aoOrdenar={alternarOrdenacaoPorCabecalho}
+            />
+
+            <footer className="rodape-listagem">
               <span>
-                Exibindo {tarefasFiltradas.length} de {totalRegistros} registro(s)
+                Pagina {numeroPagina} de {totalPaginas} | {totalRegistros} tarefa(s) no servidor
               </span>
-              <div className="alternador-visualizacao-tarefas">
-                <button type="button" className={visualizacao === "lista" ? "ativo" : ""} onClick={() => setVisualizacao("lista")}>
-                  Lista
+              <div className="acoes-paginacao">
+                <button
+                  type="button"
+                  className="botao-secundario"
+                  onClick={() => setNumeroPagina((paginaAtual) => paginaAtual - 1)}
+                  disabled={numeroPagina <= 1}
+                >
+                  Anterior
                 </button>
-                <button type="button" className={visualizacao === "quadro" ? "ativo" : ""} onClick={() => setVisualizacao("quadro")}>
-                  Quadro
+                <button
+                  type="button"
+                  className="botao-secundario"
+                  onClick={() => setNumeroPagina((paginaAtual) => paginaAtual + 1)}
+                  disabled={numeroPagina >= totalPaginas}
+                >
+                  Proxima
                 </button>
               </div>
-            </div>
-          </header>
+            </footer>
+          </>
+        )}
+      </article>
 
-          <section className="painel-acoes-lote-tarefas">
-            <label htmlFor="statusLoteTarefas">
-              Alterar status em lote
-              <select
-                id="statusLoteTarefas"
-                value={statusLote}
-                onChange={(evento) => setStatusLote(evento.target.value)}
-                disabled={executandoAcaoLote || ehColaborador}
+      {modalTarefaAberto && !ehColaborador && (
+        <div className="sobreposicao-modal" role="presentation">
+          <section
+            className="cartao-modal cartao-modal-tarefa"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tituloModalTarefa"
+          >
+            <header className="cabecalho-modal">
+              <h3 id="tituloModalTarefa">
+                {tarefaEmEdicao ? "Editar tarefa" : "Nova tarefa"}
+              </h3>
+              <button
+                type="button"
+                className="botao-fechar-modal"
+                onClick={() => {
+                  setModalTarefaAberto(false);
+                  setTarefaEmEdicao(null);
+                }}
+                aria-label="Fechar modal de tarefa"
               >
-                <option value="">Selecione</option>
-                {Object.values(StatusTarefa)
-                  .filter((valor) => typeof valor === "number")
-                  .map((status) => (
-                    <option key={status} value={status}>
-                      {nomesStatus[status as StatusTarefa]}
-                    </option>
-                  ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className="botao-secundario"
-              onClick={() => void aplicarStatusEmLote()}
-              disabled={executandoAcaoLote || totalSelecionadas === 0 || ehColaborador}
-            >
-              Aplicar em selecionadas
-            </button>
-            <button
-              type="button"
-              className="botao-perigo"
-              onClick={() => void excluirSelecionadasEmLote()}
-              disabled={executandoAcaoLote || totalSelecionadas === 0 || ehColaborador}
-            >
-              Excluir selecionadas
-            </button>
-            <button
-              type="button"
-              className="botao-secundario"
-              onClick={alternarSelecaoTodasVisiveis}
-              disabled={tarefasFiltradas.length === 0}
-            >
-              {todasVisiveisSelecionadas ? "Desmarcar visiveis" : "Marcar visiveis"}
-            </button>
-            <span>{totalSelecionadas} selecionada(s)</span>
+                x
+              </button>
+            </header>
+
+            <FormularioTarefa
+              projetos={consultaProjetos.data ?? []}
+              usuariosResponsaveis={usuariosResponsaveis}
+              responsavelUsuarioIdPadrao={sessao?.usuarioId ?? ""}
+              emEnvio={mutacaoCriarTarefa.isPending || mutacaoAtualizarTarefa.isPending}
+              titulo={tarefaEmEdicao ? "Atualizar tarefa existente" : "Cadastrar nova tarefa"}
+              rotuloBotao={tarefaEmEdicao ? "Salvar alteracoes" : "Criar tarefa"}
+              rotuloBotaoEmEnvio={tarefaEmEdicao ? "Salvando..." : "Criando..."}
+              permitirPrazoPassado={Boolean(tarefaEmEdicao)}
+              valoresIniciais={
+                tarefaEmEdicao
+                  ? {
+                      titulo: tarefaEmEdicao.titulo,
+                      descricao: tarefaEmEdicao.descricao ?? "",
+                      prioridade: tarefaEmEdicao.prioridade,
+                      projetoId: tarefaEmEdicao.projetoId,
+                      responsavelUsuarioId: tarefaEmEdicao.responsavelUsuarioId,
+                      dataPrazo: converterIsoParaDataInput(tarefaEmEdicao.dataPrazo),
+                    }
+                  : undefined
+              }
+              aoCancelarEdicao={() => {
+                setModalTarefaAberto(false);
+                setTarefaEmEdicao(null);
+              }}
+              aoEnviar={async (dados) => {
+                if (tarefaEmEdicao) {
+                  await mutacaoAtualizarTarefa.mutateAsync({
+                    id: tarefaEmEdicao.id,
+                    dados: {
+                      titulo: dados.titulo,
+                      descricao: dados.descricao || null,
+                      status: tarefaEmEdicao.status,
+                      prioridade: dados.prioridade,
+                      responsavelUsuarioId: dados.responsavelUsuarioId,
+                      dataPrazo: new Date(`${dados.dataPrazo}T23:59:59Z`).toISOString(),
+                    },
+                  });
+                  setTarefaEmEdicao(null);
+                  setModalTarefaAberto(false);
+                  return;
+                }
+
+                await mutacaoCriarTarefa.mutateAsync({
+                  titulo: dados.titulo,
+                  descricao: dados.descricao || null,
+                  prioridade: dados.prioridade,
+                  projetoId: dados.projetoId,
+                  responsavelUsuarioId: dados.responsavelUsuarioId,
+                  dataPrazo: new Date(`${dados.dataPrazo}T23:59:59Z`).toISOString(),
+                });
+                setModalTarefaAberto(false);
+              }}
+            />
           </section>
+        </div>
+      )}
 
-          {momentoUltimaSincronizacao && (
-            <p className="rotulo-atualizacao-tarefas">
-              Sincronizado em {momentoUltimaSincronizacao.toLocaleTimeString("pt-BR")}
+      {tarefaParaExcluir && (
+        <div className="sobreposicao-modal" role="presentation">
+          <section
+            className="cartao-modal cartao-modal-confirmacao"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tituloModalExclusaoTarefa"
+          >
+            <header className="cabecalho-modal">
+              <h3 id="tituloModalExclusaoTarefa">Confirmar exclusao de tarefa</h3>
+              <button
+                type="button"
+                className="botao-fechar-modal"
+                onClick={() => setTarefaParaExcluir(null)}
+                aria-label="Fechar confirmacao de exclusao"
+              >
+                x
+              </button>
+            </header>
+
+            <p>
+              Deseja realmente excluir a tarefa <strong>{tarefaParaExcluir.titulo}</strong>?
             </p>
-          )}
+            <span className="mensagem-erro">
+              Esta acao nao pode ser desfeita.
+            </span>
 
-          {consultaTarefas.isLoading && (
-            <div className="lista-esqueleto-tarefas">
-              <div className="bloco-esqueleto bloco-esqueleto-linha-tarefa" />
-              <div className="bloco-esqueleto bloco-esqueleto-linha-tarefa" />
+            <div className="linha-botoes-formulario">
+              <button
+                type="button"
+                className="botao-perigo"
+                onClick={() => {
+                  void confirmarExclusaoTarefa();
+                }}
+                disabled={mutacaoExcluirTarefa.isPending}
+              >
+                {mutacaoExcluirTarefa.isPending ? "Excluindo..." : "Excluir tarefa"}
+              </button>
+              <button
+                type="button"
+                className="botao-secundario"
+                onClick={() => setTarefaParaExcluir(null)}
+                disabled={mutacaoExcluirTarefa.isPending}
+              >
+                Cancelar
+              </button>
             </div>
-          )}
-
-          {consultaTarefas.isError && (
-            <p className="mensagem-erro">
-              {obterMensagemErro(consultaTarefas.error, "Falha ao carregar tarefas.")}
-            </p>
-          )}
-
-          {semResultados && <p>Nenhuma tarefa encontrada com os filtros atuais.</p>}
-
-          {!consultaTarefas.isLoading && !consultaTarefas.isError && !semResultados && (
-            <>
-              {visualizacao === "lista" ? (
-                <TabelaTarefasOperacional
-                  tarefas={tarefasFiltradas}
-                  idsSelecionados={idsSelecionados}
-                  todasVisiveisSelecionadas={todasVisiveisSelecionadas}
-                  mapaProjetos={mapaProjetos}
-                  carregandoAtualizacaoStatus={mutacaoAtualizarStatus.isPending}
-                  carregandoEdicao={mutacaoAtualizarTarefa.isPending}
-                  carregandoExclusao={mutacaoExcluirTarefa.isPending}
-                  permitirEditar={!ehColaborador}
-                  permitirExcluir={!ehColaborador}
-                  campoOrdenacao={campoOrdenacao}
-                  direcaoOrdenacao={direcaoOrdenacao}
-                  obterStatusPermitidos={obterStatusPermitidos}
-                  aoAlternarSelecaoTodas={alternarSelecaoTodasVisiveis}
-                  aoAlternarSelecao={alternarSelecaoTarefa}
-                  aoAlterarStatus={(tarefa, novoStatus) =>
-                    void alterarStatusDaTarefa(tarefa, novoStatus)
-                  }
-                  aoEditar={iniciarEdicaoTarefa}
-                  aoExcluir={(tarefa) => void excluirTarefaComConfirmacao(tarefa)}
-                  aoOrdenar={alternarOrdenacaoPorCabecalho}
-                />
-              ) : (
-                <QuadroTarefasOperacional
-                  tarefasPorStatus={tarefasPorStatus}
-                  idsSelecionados={idsSelecionados}
-                  mapaProjetos={mapaProjetos}
-                  aoAlternarSelecao={alternarSelecaoTarefa}
-                />
-              )}
-
-              <footer className="rodape-listagem">
-                <span>
-                  Pagina {numeroPagina} de {totalPaginas} | {totalRegistros} tarefa(s) no servidor
-                </span>
-                <div className="acoes-paginacao">
-                  <button
-                    type="button"
-                    className="botao-secundario"
-                    onClick={() => setNumeroPagina((paginaAtual) => paginaAtual - 1)}
-                    disabled={numeroPagina <= 1}
-                  >
-                    Anterior
-                  </button>
-                  <button
-                    type="button"
-                    className="botao-secundario"
-                    onClick={() => setNumeroPagina((paginaAtual) => paginaAtual + 1)}
-                    disabled={numeroPagina >= totalPaginas}
-                  >
-                    Proxima
-                  </button>
-                </div>
-              </footer>
-            </>
-          )}
-        </article>
-      </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
@@ -1238,7 +1247,16 @@ function escaparValorCsv(valor: string): string {
 function lerFiltrosPersistidosTarefas(): FiltrosTarefasPersistidos | null {
   try {
     const valor = window.localStorage.getItem(CHAVE_FILTROS_TAREFAS);
-    return valor ? (JSON.parse(valor) as FiltrosTarefasPersistidos) : null;
+    if (!valor) {
+      return null;
+    }
+
+    const filtros = JSON.parse(valor) as FiltrosTarefasPersistidos;
+    if (filtros.campoOrdenacao === CampoOrdenacaoTarefa.DataPrazo) {
+      filtros.campoOrdenacao = CampoOrdenacaoTarefa.DataCriacao;
+    }
+
+    return filtros;
   } catch {
     return null;
   }

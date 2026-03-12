@@ -38,7 +38,7 @@ export function PaginaLogin(): JSX.Element {
   }, [estaAutenticado, navegar]);
 
   const verificarDisponibilidadeApi = useCallback(async () => {
-    const urlVerificacao = `${obterUrlBaseApi()}/swagger/v1/swagger.json`;
+    const urlVerificacao = `${obterUrlBaseApi()}/api/autenticacao/saude`;
     const controladorAbort = new AbortController();
     const temporizadorAbort = window.setTimeout(() => {
       controladorAbort.abort();
@@ -138,6 +138,17 @@ export function PaginaLogin(): JSX.Element {
             <li>Notificacoes instantaneas por responsavel</li>
             <li>Fluxo de autenticacao e auditoria por sessao</li>
           </ul>
+
+          <div className="grade-indicadores-login">
+            <article className="indicador-login">
+              <strong>Tempo real</strong>
+              <span>SignalR para notificacoes operacionais imediatas.</span>
+            </article>
+            <article className="indicador-login">
+              <strong>Governanca</strong>
+              <span>Controle de acesso por perfil e area da organizacao.</span>
+            </article>
+          </div>
         </aside>
 
         <section className="bloco-formulario-login">
