@@ -24,8 +24,12 @@ public sealed class ValidadorCriarUsuarioRequisicao : AbstractValidator<CriarUsu
         RuleFor(requisicao => requisicao.Senha)
             .NotEmpty()
             .WithMessage("A senha deve ser informada.")
-            .MinimumLength(8)
-            .WithMessage("A senha deve possuir no minimo 8 caracteres.");
+            .MinimumLength(10)
+            .WithMessage("A senha deve possuir no minimo 10 caracteres.")
+            .MaximumLength(200)
+            .WithMessage("A senha deve possuir no maximo 200 caracteres.")
+            .Must(PoliticaSenha.AtendeRequisitos)
+            .WithMessage(PoliticaSenha.MensagemRequisitos);
 
         RuleFor(requisicao => requisicao.PerfilGlobal)
             .IsInEnum()

@@ -49,7 +49,7 @@ public sealed class ServicoAutenticacaoJwt : IServicoAutenticacao
 
         if (!usuario.Ativo)
         {
-            throw new UnauthorizedAccessException("Usuario inativo para autenticacao.");
+            throw new UnauthorizedAccessException("Credenciais de acesso invalidas.");
         }
 
         if (!servicoHashSenha.Verificar(senha, usuario.SenhaHash))

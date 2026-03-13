@@ -26,8 +26,8 @@ public static class ConfiguracaoAutenticacaoJwt
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(opcoes =>
             {
-                opcoes.RequireHttpsMetadata = false;
-                opcoes.SaveToken = true;
+                opcoes.RequireHttpsMetadata = configuracaoJwt.ExigirHttpsMetadata;
+                opcoes.SaveToken = false;
                 opcoes.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,

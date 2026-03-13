@@ -11,6 +11,7 @@ using GerenciadorTarefas.Aplicacao.Contratos.Projetos;
 using GerenciadorTarefas.Aplicacao.Contratos.Seguranca;
 using GerenciadorTarefas.Aplicacao.Contratos.Tarefas;
 using GerenciadorTarefas.Aplicacao.Contratos.Usuarios;
+using GerenciadorTarefas.Api.Modelos.Autenticacao;
 using GerenciadorTarefas.Api.Servicos.Autenticacao;
 using GerenciadorTarefas.Api.Servicos.Cache;
 using GerenciadorTarefas.Api.Servicos.Notificacoes;
@@ -35,9 +36,12 @@ public static class ConfiguracaoInjecaoDependencia
             opcoes.UseNpgsql(stringConexao));
 
         servicos.AddMemoryCache();
+        servicos.Configure<ConfiguracaoSegurancaLogin>(
+            configuracao.GetSection(ConfiguracaoSegurancaLogin.NomeSecao));
 
         servicos.AddSingleton<IServicoCacheConsulta, ServicoCacheConsultaMemoria>();
         servicos.AddSingleton<IServicoHashSenha, ServicoHashSenhaPbkdf2>();
+        servicos.AddSingleton<IControleTentativasLogin, ControleTentativasLoginMemoria>();
         servicos.AddScoped<IServicoAutenticacao, ServicoAutenticacaoJwt>();
         servicos.AddScoped<INotificadorTempoRealTarefas, NotificadorTempoRealTarefasSignalR>();
         servicos.AddScoped<IRepositorioArea, RepositorioArea>();

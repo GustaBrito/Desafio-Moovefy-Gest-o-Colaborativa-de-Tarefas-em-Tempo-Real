@@ -6,7 +6,8 @@ public static class ConfiguracaoCors
 
     public static IServiceCollection AdicionarCorsPadrao(
         this IServiceCollection servicos,
-        IConfiguration configuracao)
+        IConfiguration configuracao,
+        IHostEnvironment ambiente)
     {
         var origensPermitidasConfiguracao = configuracao
             .GetSection("Cors:OrigensPermitidas")
@@ -38,7 +39,7 @@ public static class ConfiguracaoCors
                 politica
                     .SetIsOriginAllowed(origem =>
                         origensPermitidas.Contains(origem) ||
-                        EhOrigemLocalDesenvolvimento(origem))
+                        (ambiente.IsDevelopment() && EhOrigemLocalDesenvolvimento(origem)))
                     .AllowAnyHeader()
                     .AllowAnyMethod()
                     .AllowCredentials();

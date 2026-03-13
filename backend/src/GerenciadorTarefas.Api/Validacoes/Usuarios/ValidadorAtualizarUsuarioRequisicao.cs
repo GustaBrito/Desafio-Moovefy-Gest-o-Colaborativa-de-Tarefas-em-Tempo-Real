@@ -26,8 +26,12 @@ public sealed class ValidadorAtualizarUsuarioRequisicao : AbstractValidator<Atua
             .WithMessage("O perfil global informado e invalido.");
 
         RuleFor(requisicao => requisicao.NovaSenha)
-            .MinimumLength(8)
-            .WithMessage("Quando informada, a nova senha deve possuir no minimo 8 caracteres.")
+            .MinimumLength(10)
+            .WithMessage("Quando informada, a nova senha deve possuir no minimo 10 caracteres.")
+            .MaximumLength(200)
+            .WithMessage("Quando informada, a nova senha deve possuir no maximo 200 caracteres.")
+            .Must(PoliticaSenha.AtendeRequisitos)
+            .WithMessage(PoliticaSenha.MensagemRequisitos)
             .When(requisicao => !string.IsNullOrWhiteSpace(requisicao.NovaSenha));
 
         RuleFor(requisicao => requisicao.AreaIds)

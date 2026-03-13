@@ -2,10 +2,12 @@ using GerenciadorTarefas.Api.Contratos.Requisicoes.Autenticacao;
 using GerenciadorTarefas.Api.Contratos.Respostas;
 using GerenciadorTarefas.Api.Contratos.Respostas.Autenticacao;
 using GerenciadorTarefas.Api.Configuracoes;
+using GerenciadorTarefas.Api.Modelos.Autenticacao;
 using GerenciadorTarefas.Api.Servicos.Autenticacao;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Globalization;
 
 namespace GerenciadorTarefas.Api.Controladores;
 
@@ -14,10 +16,14 @@ namespace GerenciadorTarefas.Api.Controladores;
 public sealed class ControladorAutenticacao : ControllerBase
 {
     private readonly IServicoAutenticacao servicoAutenticacao;
+    private readonly IControleTentativasLogin controleTentativasLogin;
 
-    public ControladorAutenticacao(IServicoAutenticacao servicoAutenticacao)
+    public ControladorAutenticacao(
+        IServicoAutenticacao servicoAutenticacao,
+        IControleTentativasLogin controleTentativasLogin)
     {
         this.servicoAutenticacao = servicoAutenticacao;
+        this.controleTentativasLogin = controleTentativasLogin;
     }
 
     [AllowAnonymous]
@@ -44,10 +50,37 @@ public sealed class ControladorAutenticacao : ControllerBase
         [FromBody] LoginRequisicao requisicao,
         CancellationToken cancellationToken)
     {
-        var resultado = await servicoAutenticacao.AutenticarAsync(
-            requisicao.Email,
-            requisicao.Senha,
-            cancellationToken);
+        var emailNormalizado = requisicao.Email.Trim().ToLowerInvariant();
+        if (controleTentativasLogin.EstaBloqueado(emailNormalizado, out var tempoRestante))
+        {
+            var segundosRestantes = Math.Max(1, (int)Math.Ceiling(tempoRestante.TotalSeconds));
+            Response.Headers.RetryAfter = segundosRestantes.ToString(CultureInfo.InvariantCulture);
+
+            return StatusCode(StatusCodes.Status429TooManyRequests, new RespostaErroApi
+            {
+                Status = StatusCodes.Status429TooManyRequests,
+                Codigo = "login_bloqueado_temporariamente",
+                Mensagem = "Muitas tentativas de autenticacao.",
+                Detalhe = "Aguarde alguns instantes antes de tentar novamente.",
+                CodigoRastreio = HttpContext.TraceIdentifier
+            });
+        }
+
+        ResultadoAutenticacao resultado;
+        try
+        {
+            resultado = await servicoAutenticacao.AutenticarAsync(
+                emailNormalizado,
+                requisicao.Senha,
+                cancellationToken);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            controleTentativasLogin.RegistrarFalha(emailNormalizado);
+            throw;
+        }
+
+        controleTentativasLogin.LimparFalhas(emailNormalizado);
 
         var resposta = new RespostaSucessoApi<LoginResposta>
         {

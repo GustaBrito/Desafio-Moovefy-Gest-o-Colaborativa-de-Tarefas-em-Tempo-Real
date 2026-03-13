@@ -8,4 +8,5 @@ public sealed class ConfiguracaoJwt
     public string Emissor { get; init; } = string.Empty;
     public string Publico { get; init; } = string.Empty;
     public int ExpiracaoMinutos { get; init; } = 60;
+    public bool ExigirHttpsMetadata { get; init; } = true;
 }
