@@ -86,3 +86,15 @@ internal sealed class TotalTarefasPorStatusDadosRespostaTeste
     public int Status { get; init; }
     public int Total { get; init; }
 }
+
+internal sealed class MetricasOperacionaisDadosRespostaTeste
+{
+    public DateTimeOffset InicioUtc { get; init; }
+    public double UptimeSegundos { get; init; }
+    public long TotalRequisicoes { get; init; }
+    public long TotalFalhasServidor { get; init; }
+    public double TaxaFalhasServidor { get; init; }
+    public double DuracaoMediaRequisicaoMs { get; init; }
+    public long MemoriaGerenciadaBytes { get; init; }
+    public int ThreadsWorkerDisponiveis { get; init; }
+}

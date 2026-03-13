@@ -42,4 +42,33 @@ public sealed class AutenticacaoIntegracaoTestes
         var envelopeErro = await ClienteApiTeste.LerEnvelopeErroAsync(resposta);
         envelopeErro.Codigo.Should().Be("nao_autenticado");
     }
+
+    [Fact]
+    public async Task Login_DeveBloquearTemporariamente_QuandoExcedeTentativasInvalidas()
+    {
+        using var fabrica = new FabricaAplicacaoWebTeste();
+        using var cliente = fabrica.CreateClient();
+
+        for (var tentativa = 1; tentativa <= 3; tentativa++)
+        {
+            var respostaInvalida = await cliente.PostAsJsonAsync("/api/autenticacao/login", new
+            {
+                Email = "superadmin@gerenciadortarefas.local",
+                Senha = "SenhaInvalida"
+            });
+
+            respostaInvalida.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+
+        var respostaBloqueio = await cliente.PostAsJsonAsync("/api/autenticacao/login", new
+        {
+            Email = "superadmin@gerenciadortarefas.local",
+            Senha = "SuperAdmin@123"
+        });
+
+        respostaBloqueio.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+
+        var envelopeErro = await ClienteApiTeste.LerEnvelopeErroAsync(respostaBloqueio);
+        envelopeErro.Codigo.Should().Be("login_bloqueado_temporariamente");
+    }
 }
