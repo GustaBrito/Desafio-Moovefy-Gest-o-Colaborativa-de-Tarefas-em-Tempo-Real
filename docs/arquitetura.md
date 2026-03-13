@@ -9,7 +9,7 @@ Blocos principais:
 - PostgreSQL como persistência relacional
 - SignalR para comunicação em tempo real
 
-## 1.1 Diagrama de Arquitetura (Texto)
+## 1.1 Diagrama de Arquitetura 
 
 ```text
 +----------------------------------------------------------------------------------------------------+

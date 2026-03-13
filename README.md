@@ -2,6 +2,8 @@
 
 Este projeto implementa um **Sistema de Gestao de Tarefas com Notificacoes** para organizacao do trabalho em equipes.
 
+Link para o video explicatório no Loom: https://www.loom.com/share/828f3515f2614114894935ad55d58431
+
 A aplicacao resolve o problema de controle operacional de atividades, centralizando o acompanhamento de projetos, tarefas e responsaveis em um fluxo unico, com visibilidade de status e prioridades.
 
 Os principais modulos do sistema sao:
@@ -12,6 +14,37 @@ Os principais modulos do sistema sao:
 - notificacoes e atualizacoes em tempo real
 
 De ponta a ponta, a solucao permite autenticar usuarios, gerenciar projetos e tarefas, acompanhar indicadores no dashboard e receber notificacoes em tempo real sobre eventos relevantes de atribuicao e acompanhamento de tarefas.
+
+## Galeria de Screenshots
+
+<p align="center">
+  <img src="./assets/Login.png" alt="Tela de Login" width="46%" />
+  <img src="./assets/Dashboard.png" alt="Tela de Dashboard" width="46%" />
+</p>
+
+<p align="center">
+  <img src="./assets/Dashboard2.png" alt="Dashboard com filtros e cards" width="46%" />
+  <img src="./assets/Projetos.png" alt="Tela de Projetos" width="46%" />
+</p>
+
+<p align="center">
+  <img src="./assets/ModalProjeto.png" alt="Modal de Projeto" width="46%" />
+  <img src="./assets/ModalExclusao.png" alt="Modal de Exclusao" width="46%" />
+</p>
+
+<p align="center">
+  <img src="./assets/Tarefas.png" alt="Tela de Tarefas" width="46%" />
+  <img src="./assets/Tarefas2.png" alt="Tela de Tarefas com detalhes" width="46%" />
+</p>
+
+<p align="center">
+  <img src="./assets/Usuarios.png" alt="Tela de Usuarios" width="46%" />
+  <img src="./assets/Usuarios2.png" alt="Tela de Usuarios com filtros" width="46%" />
+</p>
+
+<p align="center">
+  <img src="./assets/Areas.png" alt="Tela de Areas" width="46%" />
+</p>
 
 Documentacao aprofundada por item:
 - `docs/01-descricao-do-projeto.md`

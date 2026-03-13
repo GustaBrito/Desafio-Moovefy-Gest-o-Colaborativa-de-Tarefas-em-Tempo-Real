@@ -1,6 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient } from "@tanstack/react-query";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderizarComProvedores } from "../testes/utilitariosRenderizacao";
 import { PrioridadeTarefa, StatusTarefa, type TarefaResposta } from "../tipos/tarefas";
 import { PaginaTarefas } from "./PaginaTarefas";
@@ -15,6 +16,7 @@ const excluirTarefaMock = vi.fn();
 const mostrarErroMock = vi.fn();
 const mostrarInformacaoMock = vi.fn();
 const mostrarSucessoMock = vi.fn();
+const clientesConsultaTeste: QueryClient[] = [];
 
 let estadoAutenticacao = {
   ehColaborador: false,
@@ -161,6 +163,18 @@ vi.mock("../funcionalidades/tarefas/FormularioTarefa", () => ({
 }));
 
 describe("PaginaTarefas", () => {
+  afterEach(async () => {
+    for (const clienteConsulta of clientesConsultaTeste) {
+      await clienteConsulta.cancelQueries();
+      clienteConsulta.clear();
+    }
+
+    clientesConsultaTeste.length = 0;
+    window.localStorage.clear();
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     estadoAutenticacao = {
@@ -215,7 +229,8 @@ describe("PaginaTarefas", () => {
 
   it("deve listar tarefas e atualizar dados manualmente", async () => {
     const usuario = userEvent.setup();
-    renderizarComProvedores(<PaginaTarefas />);
+    const renderizacao = renderizarComProvedores(<PaginaTarefas />);
+    clientesConsultaTeste.push(renderizacao.clienteConsulta);
 
     expect(await screen.findByText("tabela-operacional")).toBeInTheDocument();
     expect(screen.getByText("Planejar release")).toBeInTheDocument();
@@ -230,7 +245,8 @@ describe("PaginaTarefas", () => {
 
   it("deve criar tarefa via modal quando usuario nao e colaborador", async () => {
     const usuario = userEvent.setup();
-    renderizarComProvedores(<PaginaTarefas />);
+    const renderizacao = renderizarComProvedores(<PaginaTarefas />);
+    clientesConsultaTeste.push(renderizacao.clienteConsulta);
 
     await screen.findByText("tabela-operacional");
     await usuario.click(screen.getByRole("button", { name: "+ Nova tarefa" }));
@@ -263,7 +279,8 @@ describe("PaginaTarefas", () => {
       },
     };
 
-    renderizarComProvedores(<PaginaTarefas />);
+    const renderizacao = renderizarComProvedores(<PaginaTarefas />);
+    clientesConsultaTeste.push(renderizacao.clienteConsulta);
     await screen.findByText("tabela-operacional");
 
     expect(screen.queryByRole("button", { name: "+ Nova tarefa" })).not.toBeInTheDocument();
