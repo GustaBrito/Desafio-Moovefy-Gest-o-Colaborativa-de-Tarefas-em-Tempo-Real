@@ -52,18 +52,6 @@ public sealed class NotificacaoMapeamento : IEntityTypeConfiguration<Notificacao
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_notificacoes_usuarios_responsavel_usuario_id");
 
-        builder.HasOne(notificacao => notificacao.Tarefa)
-            .WithMany()
-            .HasForeignKey(notificacao => notificacao.TarefaId)
-            .OnDelete(DeleteBehavior.Restrict)
-            .HasConstraintName("fk_notificacoes_tarefas_tarefa_id");
-
-        builder.HasOne(notificacao => notificacao.Projeto)
-            .WithMany()
-            .HasForeignKey(notificacao => notificacao.ProjetoId)
-            .OnDelete(DeleteBehavior.Restrict)
-            .HasConstraintName("fk_notificacoes_projetos_projeto_id");
-
         builder.HasIndex(notificacao => notificacao.ResponsavelUsuarioId)
             .HasDatabaseName("ix_notificacoes_responsavel_usuario_id");
 

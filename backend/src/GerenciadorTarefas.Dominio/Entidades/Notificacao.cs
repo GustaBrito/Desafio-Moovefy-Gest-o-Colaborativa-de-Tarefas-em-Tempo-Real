@@ -12,6 +12,4 @@ public sealed class Notificacao
     public DateTime DataCriacao { get; set; }
 
     public Usuario? ResponsavelUsuario { get; set; }
-    public Tarefa? Tarefa { get; set; }
-    public Projeto? Projeto { get; set; }
 }
