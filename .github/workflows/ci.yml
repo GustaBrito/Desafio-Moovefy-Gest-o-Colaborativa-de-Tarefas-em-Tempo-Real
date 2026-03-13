@@ -93,7 +93,9 @@ jobs:
         run: npm run build
 
       - name: Executar testes com cobertura
-        run: npm run test:coverage
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npx vitest run --coverage --maxWorkers=1 --fileParallelism=false --isolate
 
       - name: Publicar cobertura frontend
         if: always()
