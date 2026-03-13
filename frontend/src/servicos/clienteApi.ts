@@ -1,7 +1,17 @@
 import type { RespostaErroApi, RespostaSucessoApi } from "../tipos/comum";
-import { obterSessaoArmazenada } from "./servicoSessao";
+import {
+  obterSessaoArmazenada,
+  removerSessao,
+  sessaoExpirou,
+} from "./servicoSessao";
 
-const urlBaseApi = import.meta.env.VITE_URL_API ?? "http://localhost:5258";
+const urlBaseApiConfigurada = (import.meta.env.VITE_URL_API ?? "").trim();
+const urlBaseApi =
+  urlBaseApiConfigurada.length > 0
+    ? urlBaseApiConfigurada
+    : import.meta.env.DEV
+      ? "http://localhost:5258"
+      : "";
 
 interface OpcoesRequisicaoApi extends Omit<RequestInit, "body"> {
   corpo?: unknown;
@@ -33,14 +43,34 @@ export class ErroRequisicaoApi extends Error {
 }
 
 export function obterUrlBaseApi(): string {
-  return urlBaseApi;
+  if (!urlBaseApi) {
+    throw new Error(
+      "A variavel VITE_URL_API nao foi configurada para este ambiente."
+    );
+  }
+
+  return urlBaseApi.endsWith("/") ? urlBaseApi.slice(0, -1) : urlBaseApi;
 }
 
 export async function requisitarApi<TResposta>(
   rota: string,
   opcoes: OpcoesRequisicaoApi = {}
 ): Promise<TResposta> {
-  const url = `${urlBaseApi}${rota}`;
+  let urlBaseResolvida: string;
+  try {
+    urlBaseResolvida = obterUrlBaseApi();
+  } catch (erro) {
+    throw new ErroRequisicaoApi({
+      mensagem:
+        erro instanceof Error
+          ? erro.message
+          : "A URL da API nao foi configurada.",
+      status: 0,
+      codigo: "configuracao_invalida",
+    });
+  }
+
+  const url = `${urlBaseResolvida}${rota}`;
   const sessao = obterSessaoArmazenada();
 
   const headers = new Headers(opcoes.headers);
@@ -48,6 +78,15 @@ export async function requisitarApi<TResposta>(
 
   if (opcoes.corpo !== undefined) {
     headers.set("Content-Type", "application/json");
+  }
+
+  if (sessao && sessaoExpirou(sessao)) {
+    removerSessao();
+    throw new ErroRequisicaoApi({
+      mensagem: "Sua sessao expirou. Faca login novamente.",
+      status: 401,
+      codigo: "sessao_expirada",
+    });
   }
 
   if (sessao?.tokenAcesso) {
@@ -98,9 +137,12 @@ async function lancarErroApi(resposta: Response): Promise<never> {
     // Mantem erro padrao quando o corpo nao for JSON.
   }
 
+  if (resposta.status === 401 && obterSessaoArmazenada()) {
+    removerSessao();
+  }
+
   throw new ErroRequisicaoApi({
-    mensagem:
-      erroApi?.detalhe || erroApi?.mensagem || "Falha na requisicao.",
+    mensagem: erroApi?.mensagem || "Falha na requisicao.",
     status: erroApi?.status || resposta.status,
     codigo: erroApi?.codigo || "erro_requisicao",
     detalhe: erroApi?.detalhe,

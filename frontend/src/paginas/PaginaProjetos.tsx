@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormularioProjeto } from "../funcionalidades/projetos/FormularioProjeto";
+import { useFiltrosProjetos } from "../funcionalidades/projetos/useFiltrosProjetos";
+import {
+  type CriterioOrdenacaoProjeto,
+  type ModoVisualizacaoProjeto,
+  escaparValorCsv,
+  formatarDataHora,
+  obterMensagemErro,
+  obterNomesAreasProjeto,
+  obterNomesPessoasProjeto,
+} from "../funcionalidades/projetos/utilitariosProjetos";
 import { usarAutenticacao } from "../ganchos/usarAutenticacao";
 import { usarNotificacao } from "../ganchos/usarNotificacao";
 import { listarAreas } from "../servicos/servicoAreas";
@@ -17,14 +27,6 @@ import type {
   ProjetoResposta,
 } from "../tipos/projetos";
 
-type CriterioOrdenacaoProjeto =
-  | "nome_ascendente"
-  | "nome_descendente"
-  | "data_mais_recente"
-  | "data_mais_antiga";
-
-type ModoVisualizacaoProjeto = "tabela" | "quadro";
-
 export function PaginaProjetos(): JSX.Element {
   const clienteConsulta = useQueryClient();
   const { ehColaborador } = usarAutenticacao();
@@ -34,10 +36,6 @@ export function PaginaProjetos(): JSX.Element {
   const [modalProjetoAberto, setModalProjetoAberto] = useState(false);
   const [modoVisualizacao, setModoVisualizacao] =
     useState<ModoVisualizacaoProjeto>("tabela");
-  const [textoBusca, setTextoBusca] = useState("");
-  const [criterioOrdenacao, setCriterioOrdenacao] =
-    useState<CriterioOrdenacaoProjeto>("data_mais_recente");
-  const [somenteComDescricao, setSomenteComDescricao] = useState(false);
 
   useEffect(() => {
     if (!modalProjetoAberto && !projetoParaExcluir) {
@@ -178,59 +176,16 @@ export function PaginaProjetos(): JSX.Element {
     setProjetoParaExcluir(null);
   }
 
-  function limparFiltros(): void {
-    setTextoBusca("");
-    setSomenteComDescricao(false);
-    setCriterioOrdenacao("data_mais_recente");
-  }
-
-  const projetosFiltrados = useMemo(() => {
-    const textoBuscaNormalizado = normalizarTexto(textoBusca);
-    const listaProjetos = consultaProjetos.data ?? [];
-
-    const projetosComFiltros = listaProjetos.filter((projeto) => {
-      if (
-        somenteComDescricao &&
-        (!projeto.descricao || projeto.descricao.trim().length === 0)
-      ) {
-        return false;
-      }
-
-      if (!textoBuscaNormalizado) {
-        return true;
-      }
-
-      const nomeNormalizado = normalizarTexto(projeto.nome);
-      const descricaoNormalizada = normalizarTexto(projeto.descricao ?? "");
-
-      return (
-        nomeNormalizado.includes(textoBuscaNormalizado) ||
-        descricaoNormalizada.includes(textoBuscaNormalizado)
-      );
-    });
-
-    return projetosComFiltros.sort((projetoAtual, proximoProjeto) => {
-      if (criterioOrdenacao === "nome_ascendente") {
-        return projetoAtual.nome.localeCompare(proximoProjeto.nome, "pt-BR");
-      }
-
-      if (criterioOrdenacao === "nome_descendente") {
-        return proximoProjeto.nome.localeCompare(projetoAtual.nome, "pt-BR");
-      }
-
-      if (criterioOrdenacao === "data_mais_antiga") {
-        return (
-          new Date(projetoAtual.dataCriacao).getTime() -
-          new Date(proximoProjeto.dataCriacao).getTime()
-        );
-      }
-
-      return (
-        new Date(proximoProjeto.dataCriacao).getTime() -
-        new Date(projetoAtual.dataCriacao).getTime()
-      );
-    });
-  }, [consultaProjetos.data, criterioOrdenacao, somenteComDescricao, textoBusca]);
+  const {
+    textoBusca,
+    criterioOrdenacao,
+    somenteComDescricao,
+    projetosFiltrados,
+    setTextoBusca,
+    setCriterioOrdenacao,
+    setSomenteComDescricao,
+    limparFiltros,
+  } = useFiltrosProjetos(consultaProjetos.data ?? []);
 
   const colunasQuadroProjetos = useMemo(() => {
     const gruposPorArea = new Map<string, ProjetoResposta[]>();
@@ -789,57 +744,6 @@ export function PaginaProjetos(): JSX.Element {
       )}
     </section>
   );
-}
-
-function normalizarTexto(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
-
-function obterNomesAreasProjeto(projeto: ProjetoResposta): string[] {
-  if (projeto.areasNomes && projeto.areasNomes.length > 0) {
-    return projeto.areasNomes;
-  }
-
-  if (projeto.areaNome && projeto.areaNome.trim().length > 0) {
-    return [projeto.areaNome];
-  }
-
-  return ["Sem area"];
-}
-
-function obterNomesPessoasProjeto(projeto: ProjetoResposta): string[] {
-  if (
-    projeto.usuariosNomesVinculados &&
-    projeto.usuariosNomesVinculados.length > 0
-  ) {
-    return projeto.usuariosNomesVinculados;
-  }
-
-  if (projeto.gestorNome && projeto.gestorNome.trim().length > 0) {
-    return [projeto.gestorNome];
-  }
-
-  return [];
-}
-
-function formatarDataHora(data: string): string {
-  return new Date(data).toLocaleString("pt-BR");
-}
-
-function escaparValorCsv(valor: string): string {
-  return `"${valor.replace(/"/g, '""')}"`;
-}
-
-function obterMensagemErro(excecao: unknown, mensagemPadrao: string): string {
-  if (excecao instanceof Error && excecao.message.trim().length > 0) {
-    return excecao.message;
-  }
-
-  return mensagemPadrao;
 }
 
 function IconeEditar(): JSX.Element {

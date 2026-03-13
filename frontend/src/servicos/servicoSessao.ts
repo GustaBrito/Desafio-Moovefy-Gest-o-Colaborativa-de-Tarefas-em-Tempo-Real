@@ -27,7 +27,7 @@ export function obterSessaoArmazenada(): SessaoAutenticacao | null {
       return null;
     }
 
-    return {
+    const sessaoNormalizada: SessaoAutenticacao = {
       usuarioId: sessao.usuarioId,
       nome: sessao.nome,
       email: sessao.email,
@@ -37,6 +37,13 @@ export function obterSessaoArmazenada(): SessaoAutenticacao | null {
       tipoToken: sessao.tipoToken ?? "Bearer",
       expiraEmUtc: sessao.expiraEmUtc ?? new Date().toISOString(),
     };
+
+    if (sessaoExpirou(sessaoNormalizada)) {
+      removerSessao();
+      return null;
+    }
+
+    return sessaoNormalizada;
   } catch {
     removerSessao();
     return null;
@@ -59,4 +66,14 @@ export function salvarSessao(
 export function removerSessao(): void {
   obterArmazenamentoSessao().removeItem(chaveSessao);
   obterArmazenamentoPersistente().removeItem(chaveSessao);
+}
+
+export function sessaoExpirou(sessao: SessaoAutenticacao): boolean {
+  const instanteExpiracao = Date.parse(sessao.expiraEmUtc);
+
+  if (Number.isNaN(instanteExpiracao)) {
+    return true;
+  }
+
+  return Date.now() >= instanteExpiracao;
 }

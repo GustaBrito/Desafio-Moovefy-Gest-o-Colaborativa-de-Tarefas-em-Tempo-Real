@@ -1,6 +1,7 @@
 import {
   createContext,
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type PropsWithChildren,
@@ -10,6 +11,7 @@ import {
   obterSessaoArmazenada,
   removerSessao,
   salvarSessao,
+  sessaoExpirou,
 } from "../servicos/servicoSessao";
 import {
   PerfilGlobalUsuario,
@@ -66,6 +68,28 @@ export function ProvedorAutenticacao({
     removerSessao();
     setSessao(null);
   }, []);
+
+  useEffect(() => {
+    if (!sessao) {
+      return undefined;
+    }
+
+    if (sessaoExpirou(sessao)) {
+      realizarLogout();
+      return undefined;
+    }
+
+    const instanteExpiracao = Date.parse(sessao.expiraEmUtc);
+    const milissegundosRestantes = instanteExpiracao - Date.now();
+
+    const identificadorTemporizador = window.setTimeout(() => {
+      realizarLogout();
+    }, milissegundosRestantes);
+
+    return () => {
+      window.clearTimeout(identificadorTemporizador);
+    };
+  }, [sessao, realizarLogout]);
 
   const valorContexto = useMemo<ValorContextoAutenticacao>(
     () => ({

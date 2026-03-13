@@ -2,6 +2,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormularioTarefa } from "../funcionalidades/tarefas/FormularioTarefa";
 import { TabelaTarefasOperacional } from "../funcionalidades/tarefas/TabelaTarefasOperacional";
+import {
+  nomesCamposOrdenacao,
+  nomesDirecaoOrdenacao,
+  nomesStatus,
+  opcoesChipsRapidos,
+} from "../funcionalidades/tarefas/configuracoesFiltrosTarefas";
+import { useFiltrosTarefas } from "../funcionalidades/tarefas/useFiltrosTarefas";
+import {
+  converterIsoParaDataInput,
+  escaparValorCsv,
+  normalizarTexto,
+  obterMensagemErro,
+  obterStatusPermitidos,
+  statusPermitido,
+  tarefaVenceHoje,
+} from "../funcionalidades/tarefas/utilitariosTarefas";
 import { usarAutenticacao } from "../ganchos/usarAutenticacao";
 import { usarNotificacao } from "../ganchos/usarNotificacao";
 import { listarProjetos } from "../servicos/servicoProjetos";
@@ -17,26 +33,8 @@ import {
   CampoOrdenacaoTarefa,
   DirecaoOrdenacaoTarefa,
   StatusTarefa,
-  type FiltroConsultaTarefas,
   type TarefaResposta,
 } from "../tipos/tarefas";
-
-type VisualizacaoTarefas = "lista" | "quadro";
-type ChipRapidoTarefas = "atrasadas" | "vence_hoje" | "urgentes";
-
-interface FiltrosTarefasPersistidos {
-  projetoIdFiltro: string;
-  statusFiltro: string;
-  responsavelUsuarioIdFiltro: string;
-  dataPrazoInicialFiltro: string;
-  dataPrazoFinalFiltro: string;
-  campoOrdenacao: CampoOrdenacaoTarefa;
-  direcaoOrdenacao: DirecaoOrdenacaoTarefa;
-  tamanhoPagina: number;
-  textoBusca: string;
-  visualizacao: VisualizacaoTarefas;
-  chipsAtivos: ChipRapidoTarefas[];
-}
 
 interface CartaoResumoTarefas {
   titulo: string;
@@ -44,82 +42,39 @@ interface CartaoResumoTarefas {
   subtitulo: string;
 }
 
-const CHAVE_FILTROS_TAREFAS = "tarefas_filtros_persistidos_v1";
-
-const nomesStatus: Record<StatusTarefa, string> = {
-  [StatusTarefa.Pendente]: "Pendente",
-  [StatusTarefa.EmAndamento]: "Em andamento",
-  [StatusTarefa.Concluida]: "Concluida",
-  [StatusTarefa.Cancelada]: "Cancelada",
-};
-
-const nomesCamposOrdenacao: Record<CampoOrdenacaoTarefa, string> = {
-  [CampoOrdenacaoTarefa.DataCriacao]: "Data de criacao",
-  [CampoOrdenacaoTarefa.DataPrazo]: "Data de prazo",
-  [CampoOrdenacaoTarefa.Prioridade]: "Prioridade",
-  [CampoOrdenacaoTarefa.Status]: "Status",
-  [CampoOrdenacaoTarefa.Titulo]: "Titulo",
-};
-
-const nomesDirecaoOrdenacao: Record<DirecaoOrdenacaoTarefa, string> = {
-  [DirecaoOrdenacaoTarefa.Ascendente]: "Ascendente",
-  [DirecaoOrdenacaoTarefa.Descendente]: "Descendente",
-};
-
-const opcoesChipsRapidos: Array<{ id: ChipRapidoTarefas; rotulo: string }> = [
-  { id: "atrasadas", rotulo: "Atrasadas" },
-  { id: "vence_hoje", rotulo: "Vence hoje" },
-  { id: "urgentes", rotulo: "Urgentes" },
-];
-
 export function PaginaTarefas(): JSX.Element {
   const clienteConsulta = useQueryClient();
   const { sessao, ehColaborador } = usarAutenticacao();
   const { historicoNotificacoes, mostrarErro, mostrarInformacao, mostrarSucesso } =
     usarNotificacao();
-
-  const filtrosIniciais = useRef<FiltrosTarefasPersistidos | null>(
-    lerFiltrosPersistidosTarefas()
-  );
   const assinaturaAnteriorTarefas = useRef("");
-
-  const [projetoIdFiltro, setProjetoIdFiltro] = useState(
-    () => filtrosIniciais.current?.projetoIdFiltro ?? ""
-  );
-  const [statusFiltro, setStatusFiltro] = useState(
-    () => filtrosIniciais.current?.statusFiltro ?? ""
-  );
-  const [responsavelUsuarioIdFiltro, setResponsavelUsuarioIdFiltro] = useState(
-    () => filtrosIniciais.current?.responsavelUsuarioIdFiltro ?? ""
-  );
-  const [dataPrazoInicialFiltro, setDataPrazoInicialFiltro] = useState(
-    () => filtrosIniciais.current?.dataPrazoInicialFiltro ?? ""
-  );
-  const [dataPrazoFinalFiltro, setDataPrazoFinalFiltro] = useState(
-    () => filtrosIniciais.current?.dataPrazoFinalFiltro ?? ""
-  );
-  const [campoOrdenacao, setCampoOrdenacao] = useState<CampoOrdenacaoTarefa>(
-    () => filtrosIniciais.current?.campoOrdenacao ?? CampoOrdenacaoTarefa.DataCriacao
-  );
-  const [direcaoOrdenacao, setDirecaoOrdenacao] =
-    useState<DirecaoOrdenacaoTarefa>(
-      () =>
-        filtrosIniciais.current?.direcaoOrdenacao ??
-        DirecaoOrdenacaoTarefa.Ascendente
-    );
-  const [numeroPagina, setNumeroPagina] = useState(1);
-  const [tamanhoPagina, setTamanhoPagina] = useState(
-    () => filtrosIniciais.current?.tamanhoPagina ?? 10
-  );
-  const [textoBusca, setTextoBusca] = useState(
-    () => filtrosIniciais.current?.textoBusca ?? ""
-  );
-  const [visualizacao] = useState<VisualizacaoTarefas>(
-    () => filtrosIniciais.current?.visualizacao ?? "lista"
-  );
-  const [chipsAtivos, setChipsAtivos] = useState<ChipRapidoTarefas[]>(
-    () => filtrosIniciais.current?.chipsAtivos ?? []
-  );
+  const {
+    projetoIdFiltro,
+    statusFiltro,
+    responsavelUsuarioIdFiltro,
+    dataPrazoInicialFiltro,
+    dataPrazoFinalFiltro,
+    campoOrdenacao,
+    direcaoOrdenacao,
+    numeroPagina,
+    tamanhoPagina,
+    textoBusca,
+    chipsAtivos,
+    filtroConsulta,
+    setProjetoIdFiltro,
+    setStatusFiltro,
+    setResponsavelUsuarioIdFiltro,
+    setDataPrazoInicialFiltro,
+    setDataPrazoFinalFiltro,
+    setCampoOrdenacao,
+    setDirecaoOrdenacao,
+    setNumeroPagina,
+    setTamanhoPagina,
+    setTextoBusca,
+    alternarChipRapido,
+    alternarOrdenacaoPorCabecalho,
+    limparFiltros: limparFiltrosBase,
+  } = useFiltrosTarefas();
   const [idsSelecionados, setIdsSelecionados] = useState<string[]>([]);
   const [statusLote, setStatusLote] = useState("");
   const [tarefaEmEdicao, setTarefaEmEdicao] = useState<TarefaResposta | null>(null);
@@ -130,31 +85,6 @@ export function PaginaTarefas(): JSX.Element {
     useState<Date | null>(null);
 
   const campoBuscaRef = useRef<HTMLInputElement | null>(null);
-
-  const filtroConsulta = useMemo<FiltroConsultaTarefas>(
-    () => ({
-      projetoId: projetoIdFiltro || undefined,
-      status: statusFiltro ? (Number(statusFiltro) as StatusTarefa) : undefined,
-      responsavelUsuarioId: responsavelUsuarioIdFiltro || undefined,
-      dataPrazoInicial: dataPrazoInicialFiltro || undefined,
-      dataPrazoFinal: dataPrazoFinalFiltro || undefined,
-      campoOrdenacao,
-      direcaoOrdenacao,
-      numeroPagina,
-      tamanhoPagina,
-    }),
-    [
-      projetoIdFiltro,
-      statusFiltro,
-      responsavelUsuarioIdFiltro,
-      dataPrazoInicialFiltro,
-      dataPrazoFinalFiltro,
-      campoOrdenacao,
-      direcaoOrdenacao,
-      numeroPagina,
-      tamanhoPagina,
-    ]
-  );
 
   const consultaProjetos = useQuery({
     queryKey: ["projetos"],
@@ -324,35 +254,6 @@ export function PaginaTarefas(): JSX.Element {
     !consultaTarefas.isLoading && !consultaTarefas.isError && tarefasFiltradas.length === 0;
 
   useEffect(() => {
-    const filtrosPersistidos: FiltrosTarefasPersistidos = {
-      projetoIdFiltro,
-      statusFiltro,
-      responsavelUsuarioIdFiltro,
-      dataPrazoInicialFiltro,
-      dataPrazoFinalFiltro,
-      campoOrdenacao,
-      direcaoOrdenacao,
-      tamanhoPagina,
-      textoBusca,
-      visualizacao,
-      chipsAtivos,
-    };
-    salvarFiltrosPersistidosTarefas(filtrosPersistidos);
-  }, [
-    projetoIdFiltro,
-    statusFiltro,
-    responsavelUsuarioIdFiltro,
-    dataPrazoInicialFiltro,
-    dataPrazoFinalFiltro,
-    campoOrdenacao,
-    direcaoOrdenacao,
-    tamanhoPagina,
-    textoBusca,
-    visualizacao,
-    chipsAtivos,
-  ]);
-
-  useEffect(() => {
     const idsVisiveis = new Set(tarefasFiltradas.map((tarefa) => tarefa.id));
     setIdsSelecionados((idsAtuais) => idsAtuais.filter((id) => idsVisiveis.has(id)));
   }, [tarefasFiltradas]);
@@ -448,48 +349,11 @@ export function PaginaTarefas(): JSX.Element {
     setModalTarefaAberto(true);
   }
 
-  function alternarChipRapido(chip: ChipRapidoTarefas): void {
-    setChipsAtivos((chipsAtuais) =>
-      chipsAtuais.includes(chip)
-        ? chipsAtuais.filter((item) => item !== chip)
-        : [...chipsAtuais, chip]
-    );
-    setNumeroPagina(1);
-  }
-
   function limparFiltros(): void {
-    setProjetoIdFiltro("");
-    setStatusFiltro("");
-    setResponsavelUsuarioIdFiltro("");
-    setDataPrazoInicialFiltro("");
-    setDataPrazoFinalFiltro("");
-    setCampoOrdenacao(CampoOrdenacaoTarefa.DataCriacao);
-    setDirecaoOrdenacao(DirecaoOrdenacaoTarefa.Ascendente);
-    setNumeroPagina(1);
-    setTamanhoPagina(10);
-    setTextoBusca("");
-    setChipsAtivos([]);
+    limparFiltrosBase();
     setIdsSelecionados([]);
     setStatusLote("");
     setTarefaEmEdicao(null);
-  }
-
-  function alternarOrdenacaoPorCabecalho(campo: CampoOrdenacaoTarefa): void {
-    if (campo === CampoOrdenacaoTarefa.DataPrazo) {
-      return;
-    }
-
-    if (campoOrdenacao === campo) {
-      setDirecaoOrdenacao((direcaoAtual) =>
-        direcaoAtual === DirecaoOrdenacaoTarefa.Ascendente
-          ? DirecaoOrdenacaoTarefa.Descendente
-          : DirecaoOrdenacaoTarefa.Ascendente
-      );
-    } else {
-      setCampoOrdenacao(campo);
-      setDirecaoOrdenacao(DirecaoOrdenacaoTarefa.Ascendente);
-    }
-    setNumeroPagina(1);
   }
 
   async function alterarStatusDaTarefa(
@@ -1188,90 +1052,6 @@ export function PaginaTarefas(): JSX.Element {
       )}
     </section>
   );
-}
-
-function obterStatusPermitidos(statusAtual: StatusTarefa): StatusTarefa[] {
-  if (statusAtual === StatusTarefa.Pendente) {
-    return [StatusTarefa.Pendente, StatusTarefa.EmAndamento, StatusTarefa.Cancelada];
-  }
-  if (statusAtual === StatusTarefa.EmAndamento) {
-    return [StatusTarefa.EmAndamento, StatusTarefa.Concluida, StatusTarefa.Cancelada];
-  }
-  if (statusAtual === StatusTarefa.Concluida) {
-    return [StatusTarefa.Concluida];
-  }
-  return [StatusTarefa.Cancelada];
-}
-
-function statusPermitido(statusAtual: StatusTarefa, novoStatus: StatusTarefa): boolean {
-  if (statusAtual === novoStatus) {
-    return true;
-  }
-  return obterStatusPermitidos(statusAtual).includes(novoStatus);
-}
-
-function tarefaVenceHoje(tarefa: TarefaResposta): boolean {
-  const hoje = new Date();
-  const prazo = new Date(tarefa.dataPrazo);
-
-  return (
-    prazo.getUTCFullYear() === hoje.getUTCFullYear() &&
-    prazo.getUTCMonth() === hoje.getUTCMonth() &&
-    prazo.getUTCDate() === hoje.getUTCDate()
-  );
-}
-
-function normalizarTexto(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
-
-function converterParaDataInput(data: Date): string {
-  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(
-    data.getDate()
-  ).padStart(2, "0")}`;
-}
-
-function converterIsoParaDataInput(dataIso: string): string {
-  const data = new Date(dataIso);
-  return converterParaDataInput(data);
-}
-
-function escaparValorCsv(valor: string): string {
-  return `"${valor.replace(/"/g, '""')}"`;
-}
-
-function lerFiltrosPersistidosTarefas(): FiltrosTarefasPersistidos | null {
-  try {
-    const valor = window.localStorage.getItem(CHAVE_FILTROS_TAREFAS);
-    if (!valor) {
-      return null;
-    }
-
-    const filtros = JSON.parse(valor) as FiltrosTarefasPersistidos;
-    if (filtros.campoOrdenacao === CampoOrdenacaoTarefa.DataPrazo) {
-      filtros.campoOrdenacao = CampoOrdenacaoTarefa.DataCriacao;
-    }
-
-    return filtros;
-  } catch {
-    return null;
-  }
-}
-
-function salvarFiltrosPersistidosTarefas(filtros: FiltrosTarefasPersistidos): void {
-  window.localStorage.setItem(CHAVE_FILTROS_TAREFAS, JSON.stringify(filtros));
-}
-
-function obterMensagemErro(excecao: unknown, mensagemPadrao: string): string {
-  if (excecao instanceof Error && excecao.message.trim().length > 0) {
-    return excecao.message;
-  }
-
-  return mensagemPadrao;
 }
 
 

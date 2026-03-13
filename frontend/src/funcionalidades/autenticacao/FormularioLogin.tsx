@@ -44,7 +44,7 @@ export function FormularioLogin({
     defaultValues: {
       email: "",
       senha: "",
-      lembrarSessao: true,
+      lembrarSessao: false,
     },
   });
 

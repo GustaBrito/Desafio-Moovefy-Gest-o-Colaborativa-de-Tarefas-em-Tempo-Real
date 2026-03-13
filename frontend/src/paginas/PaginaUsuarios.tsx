@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFiltrosUsuarios } from "../funcionalidades/usuarios/useFiltrosUsuarios";
+import { normalizarTexto, obterMensagemErro } from "../funcionalidades/usuarios/utilitariosUsuarios";
 import { usarAutenticacao } from "../ganchos/usarAutenticacao";
 import { usarNotificacao } from "../ganchos/usarNotificacao";
 import { listarAreas } from "../servicos/servicoAreas";
@@ -38,9 +40,6 @@ export function PaginaUsuarios(): JSX.Element {
   const [modalUsuarioAberto, setModalUsuarioAberto] = useState(false);
   const [formulario, setFormulario] = useState<EstadoFormularioUsuario>(formularioPadrao);
   const [termoBuscaAreaFormulario, setTermoBuscaAreaFormulario] = useState("");
-  const [filtroNome, setFiltroNome] = useState("");
-  const [filtroAreaId, setFiltroAreaId] = useState("");
-  const [filtroPerfilGlobal, setFiltroPerfilGlobal] = useState("");
 
   const consultaUsuarios = useQuery({
     queryKey: ["usuarios", "administracao"],
@@ -114,28 +113,16 @@ export function PaginaUsuarios(): JSX.Element {
     [consultaUsuarios.data]
   );
 
-  const usuariosFiltrados = useMemo(() => {
-    const termoNome = normalizarTexto(filtroNome);
-
-    return usuariosOrdenados.filter((usuario) => {
-      if (termoNome && !normalizarTexto(usuario.nome).includes(termoNome)) {
-        return false;
-      }
-
-      if (filtroAreaId && !usuario.areaIds.includes(filtroAreaId)) {
-        return false;
-      }
-
-      if (
-        filtroPerfilGlobal &&
-        usuario.perfilGlobal !== Number(filtroPerfilGlobal)
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [filtroAreaId, filtroNome, filtroPerfilGlobal, usuariosOrdenados]);
+  const {
+    filtroNome,
+    filtroAreaId,
+    filtroPerfilGlobal,
+    usuariosFiltrados,
+    setFiltroNome,
+    setFiltroAreaId,
+    setFiltroPerfilGlobal,
+    limparFiltrosPesquisa,
+  } = useFiltrosUsuarios(usuariosOrdenados);
 
   const areasFiltradasFormulario = useMemo(
     () =>
@@ -243,12 +230,6 @@ export function PaginaUsuarios(): JSX.Element {
     }
 
     return perfil === PerfilGlobalUsuario.Colaborador;
-  }
-
-  function limparFiltrosPesquisa(): void {
-    setFiltroNome("");
-    setFiltroAreaId("");
-    setFiltroPerfilGlobal("");
   }
 
   return (
@@ -545,22 +526,6 @@ export function PaginaUsuarios(): JSX.Element {
       )}
     </section>
   );
-}
-
-function normalizarTexto(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
-
-function obterMensagemErro(excecao: unknown, mensagemPadrao: string): string {
-  if (excecao instanceof Error && excecao.message.trim().length > 0) {
-    return excecao.message;
-  }
-
-  return mensagemPadrao;
 }
 
 function IconeEditar(): JSX.Element {
