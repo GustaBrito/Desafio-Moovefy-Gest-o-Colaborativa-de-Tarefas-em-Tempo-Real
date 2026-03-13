@@ -29,15 +29,17 @@ services:
       dockerfile: backend/src/GerenciadorTarefas.Api/Dockerfile
     container_name: gerenciador-tarefas-api-compose
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: http://+:${API_PORTA_CONTAINER:-8080}
       ConnectionStrings__BancoDados: Host=banco_dados;Port=5432;Database=${POSTGRES_DB:-gerenciador_tarefas_dev};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
-      BancoDados__AplicarMigracoesAutomaticamente: "true"
+      BancoDados__AplicarMigracoesAutomaticamente: ${BANCO_APLICAR_MIGRACOES_AUTOMATICAMENTE:-true}
+      BancoDados__AplicarSeedDadosDemonstracao: ${BANCO_APLICAR_SEED_DEMONSTRACAO:-true}
+      AutenticacaoJwt__ChaveSecreta: ${AUTENTICACAO_JWT_CHAVE_SECRETA:-chave-desenvolvimento-local-com-32-caracteres}
     depends_on:
       banco_dados:
         condition: service_healthy
     ports:
-      - "${API_PORTA_HOST:-5258}:8080"
+      - "${API_PORTA_HOST:-5258}:${API_PORTA_CONTAINER:-8080}"
     restart: unless-stopped
     networks:
       - rede_gerenciador_tarefas
