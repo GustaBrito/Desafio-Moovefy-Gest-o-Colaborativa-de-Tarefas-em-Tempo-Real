@@ -9,12 +9,88 @@ Blocos principais:
 - PostgreSQL como persistência relacional
 - SignalR para comunicação em tempo real
 
+## 1.1 Diagrama de Arquitetura (Texto)
+
+```text
++----------------------------------------------------------------------------------------------------+
+|                                         DIAGRAMA DE ARQUITETURA                                   |
+|                     Gestao Colaborativa de Tarefas em Tempo Real - Projeto Completo               |
++----------------------------------------------------------------------------------------------------+
+
+      +---------------------------+
+      |         USUARIOS          |
+      |---------------------------|
+      | - SuperAdmin              |
+      | - Admin                   |
+      | - Colaborador             |
+      +---------------------------+
+                  |
+                  | Acesso via navegador
+                  v
+
++-------------------------------------------------------+     REST API (JSON / HTTPS)    +-------------------------------------------------------+
+| FRONTEND (React + TS + Vite)                         |------------------------------->| BACKEND API (ASP.NET Core / .NET 8)                  |
+|-------------------------------------------------------|                                |-------------------------------------------------------|
+| React SPA                                             |                                | Program.cs / Bootstrap                               |
+| App / Rotas / Layout                                  |                                | - DI                                                 |
+| RotaProtegida                                         |                                | - Auth JWT                                           |
+|                                                       |                                | - CORS                                               |
+| +---------------------------------------------------+ |                                | - Rate Limiting                                      |
+| | PAGINAS                                           | |                                | - Swagger                                            |
+| |---------------------------------------------------| |                                | - SignalR                                            |
+| | - PaginaLogin                                     | |                                | - Middlewares                                        |
+| | - PaginaDashboard                                 | |                                +-------------------------------------------------------+
+| | - PaginaProjetos                                  | |                                                     |
+| | - PaginaTarefas                                   | |                                                     v
+| | - PaginaUsuarios                                  | |                                +-------------------------------------------------------+
+| | - PaginaAreas                                     | |                                | API / CONTROLLERS                                     |
+| +---------------------------------------------------+ |                                |-------------------------------------------------------|
+|                                                       |                                | - ControladorAutenticacao                            |
+| +---------------------------------------------------+ | WebSocket / SignalR (Tempo Real)| - ControladorProjetos                                |
+| | ESTADO E COMUNICACAO                              |---------------------------------->| - ControladorTarefas                                 |
+| |---------------------------------------------------| |                                | - ControladorDashboard                               |
+| | - ContextoAutenticacao                            | |                                | - ControladorNotificacoes                            |
+| | - ContextoNotificacao                             | |                                | - ControladorUsuarios                                |
+| | - TanStack Query                                  | |                                | - ControladorAreas                                   |
+| | - clienteApi / Servicos REST                      | |                                +-------------------------------------------------------+
+| | - Cliente SignalR                                 | |                                                     |
+| +---------------------------------------------------+ |                                                     v
+|                                                       |                                +-------------------------------------------------------+
+| +---------------------------------------------------+ |                                | MIDDLEWARE / SEGURANCA / OBSERVABILIDADE            |
+| | FORMULARIOS E UX                                  | |                                |-------------------------------------------------------|
+| |---------------------------------------------------| |                                | - JWT + Claims + Perfis                              |
+| | - React Hook Form                                 | |                                | - Policies + Escopo por Area                         |
+| | - Zod                                             | |                                | - CORS                                               |
+| | - Componentes / Tabelas / Cards / Graficos       | |                                | - Rate Limiting                                      |
+| +---------------------------------------------------+ |                                | - Serilog + CorrelationId                            |
++-------------------------------------------------------+                                | - Health Checks (/health/live, /health/ready)       |
+                                                                                         | - Cache de Consulta (IMemoryCache)                  |
+                                                                                         +-------------------------------------------------------+
+                                                                                                             |
+                                                                                                             v
+                                                                                         +-------------------------------------------------------+
+                                                                                         | APLICACAO / DOMINIO / INFRAESTRUTURA                |
+                                                                                         |-------------------------------------------------------|
+                                                                                         | Aplicacao: CasosDeUso e Contratos                   |
+                                                                                         | Dominio: Entidades, Enumeracoes, Regras             |
+                                                                                         | Infraestrutura: Repositorios, EF Core, Migrations   |
+                                                                                         +-------------------------------------------------------+
+                                                                                                             |
+                                                                                                             v
+                                                                                         +-------------------------------+
+                                                                                         | POSTGRESQL                    |
+                                                                                         |-------------------------------|
+                                                                                         | - Persistencia relacional     |
+                                                                                         +-------------------------------+
+```
+
 ## 2. Camadas do Backend
 
 ### 2.1 Domínio (`GerenciadorTarefas.Dominio`)
 Responsável por:
-- entidades centrais (`Projeto`, `Tarefa`, `Notificacao`)
-- enums (`StatusTarefa`, `PrioridadeTarefa`)
+- entidades centrais (`Usuario`, `Area`, `Projeto`, `Tarefa`, `Notificacao`)
+- entidades de relacionamento (`UsuarioArea`, `ProjetoArea`, `ProjetoUsuarioVinculado`)
+- enums (`PerfilGlobalUsuario`, `StatusTarefa`, `PrioridadeTarefa`)
 - regras essenciais de negócio
 - contratos de repositório
 
@@ -26,7 +102,7 @@ Regras importantes mantidas no domínio:
 
 ### 2.2 Aplicação (`GerenciadorTarefas.Aplicacao`)
 Responsável por:
-- casos de uso por contexto (projetos, tarefas, dashboard, notificações)
+- casos de uso por contexto (autenticacao, usuarios, areas, projetos, tarefas, dashboard, notificacoes)
 - DTOs/modelos de entrada e saída
 - orquestração entre domínio, repositórios e serviços externos
 
@@ -43,6 +119,7 @@ Responsável por:
 
 Implementações:
 - persistência em PostgreSQL
+- autenticação por usuário persistido com senha em hash PBKDF2
 - consultas paginadas e filtradas para tarefas
 - persistência de histórico de notificações
 
@@ -55,7 +132,7 @@ Responsável por:
 - observabilidade e políticas transversais
 
 Diretriz:
-- controllers finos, sem regra de negócio
+- controllers finos, com validações de acesso/escopo e delegação da regra principal para casos de uso
 
 ## 3. Dependências Entre Camadas
 Fluxo de dependência:
@@ -69,7 +146,7 @@ Essa direção garante isolamento das regras centrais e facilita testes.
 ## 4. Arquitetura do Frontend
 Estrutura em `frontend/src`:
 - `paginas`: composição de telas
-- `funcionalidades`: módulos por domínio (`projetos`, `tarefas`, `dashboard`, `autenticacao`, `notificacoes`)
+- `funcionalidades`: módulos por domínio (`autenticacao`, `usuarios`, `areas`, `projetos`, `tarefas`, `dashboard`, `notificacoes`)
 - `componentes`: elementos reutilizáveis
 - `servicos`: cliente HTTP e chamadas de API
 - `rotas`: roteamento e proteção por autenticação
@@ -84,8 +161,8 @@ Padrões de UI:
 
 ### 5.1 Login
 1. frontend envia credenciais para `POST /api/autenticacao/login`
-2. API valida credenciais configuradas
-3. JWT retornado e usado nas chamadas autenticadas
+2. API valida credenciais do usuario persistido no banco (hash seguro)
+3. JWT e claims de perfil/area retornados e usados nas chamadas autenticadas
 
 ### 5.2 CRUD de tarefas
 1. requisição entra no controller
@@ -99,9 +176,12 @@ Padrões de UI:
 3. SignalR envia evento para grupo do responsável
 
 ## 6. Regras de Negócio Relevantes
+- manutenção administrativa de usuários e áreas é restrita por perfil
+- escopo de acesso para `Admin` e `Colaborador` respeita vínculo por área
 - tarefa em `EmAndamento` não pode ser excluída
 - projeto com tarefas vinculadas não pode ser excluído
 - `Cancelada` é estado terminal
+- responsável de tarefa deve ser usuário ativo e pertencente à área do projeto
 - tarefas vencidas são sinalizadas automaticamente
 - conclusão preenche `DataConclusao`
 
@@ -112,6 +192,8 @@ Padrões de UI:
 - cache de consultas com IMemoryCache e invalidação por prefixo
 - rate limiting global e específico para login
 - CORS configurável com fallback para ambiente local
+- health checks de liveness/readiness
+- correlação de requisição e métricas operacionais básicas
 
 ## 8. Observabilidade e Qualidade
 - documentação OpenAPI/Swagger
@@ -131,3 +213,65 @@ Padrões de UI:
 - adotar secret manager
 - incluir testes E2E no frontend
 - incluir HPA, probes refinadas e políticas de disponibilidade no Kubernetes
+
+## 11. Estrutura de Pastas do Projeto
+
+```text
+/
+|-- backend/
+|   |-- src/
+|   |   |-- GerenciadorTarefas.Api/
+|   |   |   |-- Configuracoes/
+|   |   |   |-- Contratos/
+|   |   |   |-- Controladores/
+|   |   |   |-- Hubs/
+|   |   |   |-- Intermediarios/
+|   |   |   |-- Modelos/
+|   |   |   |-- Seguranca/
+|   |   |   |-- Servicos/
+|   |   |   |-- Validacoes/
+|   |   |   |-- Program.cs
+|   |   |   `-- appsettings*.json
+|   |   |-- GerenciadorTarefas.Aplicacao/
+|   |   |   |-- CasosDeUso/
+|   |   |   |-- Contratos/
+|   |   |   `-- Modelos/
+|   |   |-- GerenciadorTarefas.Dominio/
+|   |   |   |-- Contratos/
+|   |   |   |-- Entidades/
+|   |   |   |-- Enumeracoes/
+|   |   |   `-- Modelos/
+|   |   `-- GerenciadorTarefas.Infraestrutura/
+|   |       |-- Persistencia/
+|   |       |   |-- Mapeamentos/
+|   |       |   |-- Migracoes/
+|   |       |   `-- Sementes/
+|   |       |-- Repositorios/
+|   |       `-- Seguranca/
+|   |-- tests/
+|   |   |-- GerenciadorTarefas.TestesUnitarios/
+|   |   `-- GerenciadorTarefas.TestesIntegracao/
+|   `-- GerenciadorTarefas.sln
+|-- frontend/
+|   |-- src/
+|   |   |-- aplicacao/
+|   |   |-- componentes/
+|   |   |-- contextos/
+|   |   |-- estilos/
+|   |   |-- funcionalidades/
+|   |   |-- ganchos/
+|   |   |-- paginas/
+|   |   |-- rotas/
+|   |   |-- servicos/
+|   |   |-- testes/
+|   |   |-- tipos/
+|   |   `-- utilitarios/
+|   |-- package.json
+|   |-- vite.config.ts
+|   `-- vercel.json
+|-- docs/
+|-- kubernetes/
+|-- scripts/
+|-- docker-compose.yml
+`-- README.md
+```
