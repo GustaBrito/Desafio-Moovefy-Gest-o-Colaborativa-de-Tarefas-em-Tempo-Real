@@ -10,7 +10,9 @@ construtorAplicacao.AdicionarObservabilidade();
 
 construtorAplicacao.Services.AdicionarInjecaoDependencia(construtorAplicacao.Configuration);
 construtorAplicacao.Services.AdicionarAutenticacaoJwt(construtorAplicacao.Configuration);
-construtorAplicacao.Services.AdicionarCorsPadrao(construtorAplicacao.Configuration);
+construtorAplicacao.Services.AdicionarCorsPadrao(
+    construtorAplicacao.Configuration,
+    construtorAplicacao.Environment);
 construtorAplicacao.Services.AdicionarLimitacaoTaxaPadrao(construtorAplicacao.Configuration);
 construtorAplicacao.Services.AdicionarDocumentacaoApi();
 construtorAplicacao.Services.AdicionarTratamentoExcecaoGlobal();
@@ -31,31 +33,20 @@ if (aplicarMigracoesAutomaticamente || aplicarSeedDadosDemonstracao)
 {
     using var escopo = aplicacao.Services.CreateScope();
     var contextoBancoDados = escopo.ServiceProvider.GetRequiredService<ContextoBancoDados>();
-    var loggerInicializacao = escopo.ServiceProvider
-        .GetRequiredService<ILoggerFactory>()
-        .CreateLogger("InicializacaoBancoDados");
 
-    try
+    if (aplicarMigracoesAutomaticamente)
     {
-        if (aplicarMigracoesAutomaticamente)
-        {
-            contextoBancoDados.Database.Migrate();
-        }
-
-        if (aplicarSeedDadosDemonstracao)
-        {
-            await SemeadorDadosDemonstracao.AplicarAsync(contextoBancoDados);
-        }
+        contextoBancoDados.Database.Migrate();
     }
-    catch (Exception ex) when (aplicacao.Environment.IsDevelopment())
+
+    if (aplicarSeedDadosDemonstracao)
     {
-        loggerInicializacao.LogWarning(
-            ex,
-            "Falha ao aplicar migracoes/seed no bootstrap. API iniciada em modo Development sem concluir inicializacao do banco.");
+        await SemeadorDadosDemonstracao.AplicarAsync(contextoBancoDados);
     }
 }
 
 aplicacao.UseSerilogRequestLogging();
+aplicacao.UsarCorrelacaoObservabilidade();
 aplicacao.UsarTratamentoExcecaoGlobal();
 aplicacao.UsarDocumentacaoApi();
 
@@ -70,6 +61,7 @@ aplicacao.UseAuthentication();
 aplicacao.UseAuthorization();
 aplicacao.MapControllers();
 aplicacao.MapHub<HubNotificacoes>("/hubs/notificacoes");
+aplicacao.MapearHealthChecksObservabilidade();
 
 aplicacao.Run();
 
