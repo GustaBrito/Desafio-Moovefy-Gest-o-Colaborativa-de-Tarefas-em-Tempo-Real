@@ -178,23 +178,27 @@ export function TabelaTarefasOperacional({
                   </div>
                 </td>
                 <td>
-                  <div className="acoes-item-listagem">
+                  <div className="acoes-item-listagem acoes-icones-projeto">
                     <button
                       type="button"
-                      className="botao-secundario"
+                      className="botao-icone-acao botao-icone-editar"
                       onClick={() => aoEditar(tarefa)}
                       disabled={carregandoEdicao || carregandoExclusao || !permitirEditar}
+                      aria-label={`Editar tarefa ${tarefa.titulo}`}
+                      title="Editar tarefa"
                     >
-                      Editar
+                      <IconeEditar />
                     </button>
 
                     <button
                       type="button"
-                      className="botao-perigo"
+                      className="botao-icone-acao botao-icone-excluir"
                       onClick={() => aoExcluir(tarefa)}
                       disabled={carregandoExclusao || carregandoEdicao || !permitirExcluir}
+                      aria-label={`Excluir tarefa ${tarefa.titulo}`}
+                      title="Excluir tarefa"
                     >
-                      Excluir
+                      <IconeExcluir />
                     </button>
                   </div>
                 </td>
@@ -247,4 +251,26 @@ function indicadorOrdenacao(
 
 function formatarData(data: string): string {
   return new Date(data).toLocaleDateString("pt-BR");
+}
+
+function IconeEditar(): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+      <path
+        d="M4 20h4l10-10-4-4L4 16v4zm14.7-11.3 1.6-1.6a1 1 0 0 0 0-1.4l-2-2a1 1 0 0 0-1.4 0l-1.6 1.6 3.4 3.4z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconeExcluir(): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+      <path
+        d="M9 3h6l1 2h4v2H4V5h4l1-2zm-2 6h10l-1 11a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2L7 9zm3 2v8h2v-8h-2zm4 0v8h2v-8h-2z"
+        fill="currentColor"
+      />
+    </svg>
+  );
 }

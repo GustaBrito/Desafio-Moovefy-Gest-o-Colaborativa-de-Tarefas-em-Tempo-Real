@@ -79,8 +79,8 @@ describe("TabelaTarefasOperacional", () => {
       StatusTarefa.EmAndamento
     );
 
-    await usuario.click(screen.getByRole("button", { name: "Editar" }));
-    await usuario.click(screen.getByRole("button", { name: "Excluir" }));
+    await usuario.click(screen.getByRole("button", { name: /Editar tarefa Ajustar pipeline/i }));
+    await usuario.click(screen.getByRole("button", { name: /Excluir tarefa Ajustar pipeline/i }));
 
     expect(aoEditar).toHaveBeenCalledWith(tarefaBase);
     expect(aoExcluir).toHaveBeenCalledWith(tarefaBase);
